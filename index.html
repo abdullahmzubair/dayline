@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="theme-color" content="#1D6A4D"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/favicon-32.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Dayline"><script>window.DAYLINE_VERSION = "20261021-04a39b46";</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script><script src="config.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset="utf-8"><meta name="theme-color" content="#1D6A4D"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/favicon-32.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Dayline"><script>window.DAYLINE_VERSION = "20261021-366d9ddd";</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script><script src="config.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Dayline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -884,7 +884,14 @@ details.tv summary { cursor: pointer; font-size: 13px; color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .td-row { animation: none; } .tour-hole { transition: none; } }/* offline badge + install steps */
 .offpill { position: fixed; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 60; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 700; padding: 6px 14px; border-radius: 999px; box-shadow: var(--shadow); pointer-events: none; }
 .inst { margin: 0; padding-left: 22px; display: grid; gap: 10px; font-size: 16px; }
-.inst .kb { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunk); font-size: 13px; }/* smart add chips + swipe rows */
+.inst .kb { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunk); font-size: 13px; }/* reminders settings */
+.nt-box { display: grid; gap: 10px; font-weight: 400; color: var(--fg); font-size: 14px; }
+.nt-lead { margin: 0; }
+.nt-row { display: flex; gap: 10px; align-items: flex-start; }
+.nt-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); flex: none; margin-top: 2px; }
+.nt-sel { justify-content: space-between; align-items: center; }
+.nt-sel select, .nt-time { border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 8px; padding: 6px 8px; font: inherit; }
+#sheet .nt-box input.nt-time { display: inline-block; width: auto; min-width: 0; padding: 2px 6px; margin: 2px 0; }/* smart add chips + swipe rows */
 .qchips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
 .qchips:empty { display: none; }
 .qc { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--line); color: var(--muted); }
@@ -1488,7 +1495,7 @@ async function SupabaseAdapter() {
       else setOffline(false);
     }
     saveOutbox(); flushing = false; render();
-    if (outbox.size) retry = setTimeout(flush, offline ? 20000 : 1500);
+    if (outbox.size) retry = setTimeout(flush, offline ? 20000 : 200);
   }
   const write = (kind, id, data) => {
     apply(kind, id, data);
@@ -1510,8 +1517,27 @@ async function SupabaseAdapter() {
     get waiting() { return outbox.size; },
     home: "your Dayline account", account: session.user.email,
     async changePassword(pw) { const { error } = await sb.auth.updateUser({ password: pw }); if (error) throw error; },
+    /* Notifications: remember this device, forget it, or ask the server for a test. */
+    push: {
+      key: cfg.vapidPublicKey || null,
+      async save(sub) {
+        const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || "UTC";
+        const { error } = await sb.from("dayline_push").upsert({ user_id: uid, endpoint: sub.endpoint, sub, tz }, { onConflict: "user_id,endpoint" });
+        if (error) throw error;
+      },
+      async remove(endpoint) { await sb.from("dayline_push").delete().eq("user_id", uid).eq("endpoint", endpoint); },
+      async test() {
+        const { data } = await sb.auth.getSession(), tok = data && data.session && data.session.access_token;
+        if (!tok) throw new Error("Please sign in again.");
+        const r = await fetch(`${cfg.supabaseUrl}/functions/v1/dayline-push?test=1`, { method: "POST", headers: { Authorization: `Bearer ${tok}`, apikey: cfg.supabaseKey, "Content-Type": "application/json" }, body: "{}" });
+        let j = {}; try { j = await r.json(); } catch (e) {}
+        if (!r.ok) throw new Error(j.error || (r.status === 404 ? "The reminder service isn't set up in Supabase yet." : `Couldn't reach the reminder service (${r.status}).`));
+        return j;
+      }
+    },
     async signOut() {
       if (outbox.size && !confirm(`${outbox.size} change${outbox.size === 1 ? " hasn't" : "s haven't"} synced yet. Sign out anyway and lose ${outbox.size === 1 ? "it" : "them"}?`)) return;
+      try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription(); if (sub) { await sb.from("dayline_push").delete().eq("user_id", uid).eq("endpoint", sub.endpoint); await sub.unsubscribe(); } } catch (e) {}
       await sb.auth.signOut(); try { localStorage.removeItem(CK); localStorage.removeItem(OK); } catch (e) {} location.reload();
     },
     start(onItems, onDays, onSettings, onLost, onReviews) {
@@ -3156,6 +3182,7 @@ function openSettings() {
       </div>
       <span class="hint" style="font-weight:400">From 8 pm, ✨ What now? becomes 🌙 Going to bed. In the morning you'll be asked how you slept.</span>
     </fieldset>
+    ${IS_SITE ? `<fieldset class="f full"><legend>Reminders</legend><div id="nt-box" class="nt-box"><p class="hint">Checking…</p></div></fieldset>` : ""}
     <fieldset class="f full"><legend>Helpers</legend>
       <div style="display:grid;gap:8px;font-weight:400;color:var(--fg);font-size:14px">
         <label style="display:flex;gap:8px;align-items:flex-start"><input id="s-real" type="checkbox" ${s.realistic !== false ? "checked" : ""} style="width:18px;height:18px;accent-color:var(--accent);flex:none;margin-top:2px"><span>Plan with realistic times<br><span class="hint">${ratios().overall ? `You usually take ${ratios().overall.toFixed(1)}× your estimates (from ${ratios().n} timed tasks). Plan my day and What now? use that.` : "Once you've timed 3 or more tasks, Dayline learns how long things really take you."}</span></span></label>
@@ -3181,6 +3208,7 @@ function openSettings() {
     spc.addEventListener("change", () => setComfort({ spacious: spc.checked }));
     c.querySelector("#s-exp").addEventListener("click", exportBackup);
     c.querySelector("#s-proj").addEventListener("click", openProjects);
+    paintNotify(c.querySelector("#nt-box"));
     const so = c.querySelector("#s-out"); if (so) so.addEventListener("click", () => STORE.signOut());
     const spw = c.querySelector("#s-pw"); if (spw) spw.addEventListener("click", openChangePassword);
     c.querySelector("#s-tt").addEventListener("click", openTimetable);
@@ -4203,6 +4231,59 @@ function openInstall() {
   <p class="hint" style="margin:-6px 0 12px">It opens full-screen like an app, starts instantly, and works without internet. Changes sync when you're back online.</p>
   <ol class="inst">${steps}</ol>
   <div class="btns" style="margin-top:14px"><span class="sp"></span><button type="button" class="btn primary" data-close>Got it</button></div>`);
+}
+/* ---------- Notifications (website): reminders sent by the Supabase function, even when Dayline is closed ---------- */
+const NOTIFY_DEF = { classes: 10, tasks: true, highlight: true, highlightAt: "15:00", morning: true, winddown: true };
+const notifyPrefs = () => ({ ...NOTIFY_DEF, ...(S.settings.notify || {}) });
+const pushOK = () => IS_SITE && STORE && STORE.push && STORE.push.key && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const b64uBytes = s => { const b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+const swReady = () => Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error("The offline helper isn't running. Reload Dayline and try again.")), 8000))]);
+async function currentPush() { try { const reg = await navigator.serviceWorker.getRegistration(); return reg ? await reg.pushManager.getSubscription() : null; } catch (e) { return null; } }
+async function enablePush() {
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") throw new Error(perm === "denied" ? "Notifications are blocked. Allow them for Dayline in your phone or browser settings, then try again." : "You'll need to tap Allow to get reminders.");
+  const reg = await swReady();
+  const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uBytes(STORE.push.key) });
+  await STORE.push.save(sub.toJSON());
+  if (!S.settings.notify) putSettings({ ...S.settings, notify: { ...NOTIFY_DEF } });
+}
+async function disablePush() { const sub = await currentPush(); if (sub) { await STORE.push.remove(sub.endpoint); await sub.unsubscribe(); } }
+/* Keep this device's time zone up to date (travel, daylight saving). */
+async function refreshPush() { if (!pushOK() || Notification.permission !== "granted") return; const sub = await currentPush(); if (sub) STORE.push.save(sub.toJSON()).catch(() => {}); }
+setTimeout(refreshPush, 5000);
+async function paintNotify(box) {
+  if (!box) return;
+  const tog = (k, label, hint) => `<label class="nt-row"><input type="checkbox" data-nt="${k}" ${notifyPrefs()[k] ? "checked" : ""}><span>${label}${hint ? `<br><span class="hint">${hint}</span>` : ""}</span></label>`;
+  if (!pushOK()) {
+    box.innerHTML = `<p class="hint">${isIOS() && !isStandalone() ? "On iPhone and iPad, reminders work in the home-screen app. Add Dayline to your home screen first (⋯ More → 📲 Install Dayline), open it from there, then turn reminders on here." : STORE && STORE.push && !STORE.push.key ? "Reminders aren't set up for this website yet." : "This browser can't show notifications. Try Chrome, Edge or Safari, or the home-screen app."}</p>`;
+    return;
+  }
+  const sub = await currentPush(), on = !!sub && Notification.permission === "granted", n = notifyPrefs();
+  if (!on) {
+    box.innerHTML = `<p class="nt-lead">Get a gentle nudge for classes, planned tasks, your highlight and bedtime, even when Dayline is closed.</p>
+      ${Notification.permission === "denied" ? `<p class="status err">Notifications are blocked for Dayline. Allow them in your phone or browser settings, then come back here.</p>` : ""}
+      <div class="row" style="justify-content:flex-start"><button type="button" class="btn primary" id="nt-on">🔔 Turn on reminders</button></div><p class="status" id="nt-st"></p>`;
+  } else {
+    box.innerHTML = `<p class="nt-lead">✅ Reminders are on for this device.</p>
+      <label class="nt-row nt-sel"><span>Classes and fixed events</span><select data-nt="classes"><option value="0">Off</option>${[5, 10, 15, 30, 60].map(m => `<option value="${m}" ${+n.classes === m ? "selected" : ""}>${m} min before</option>`).join("")}</select></label>
+      ${tog("tasks", "Planned tasks, when they're due to start")}
+      ${tog("highlight", "Your highlight", `At its planned time, plus a nudge at <input type="time" step="900" data-nt="highlightAt" value="${esc(n.highlightAt)}" class="nt-time"> if it isn't done yet.`)}
+      ${tog("morning", "Morning kick-off", `When your day starts (${esc(fmtT(toMin(S.settings.dayStart || DEF.dayStart)))}).`)}
+      ${tog("winddown", "Wind-down", `30 minutes before your bedtime (${esc(fmtT(toMin(S.settings.bedtime || "23:30")))}).`)}
+      <div class="row" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="btn" id="nt-test">Send me a test</button><button type="button" class="btn ghost" id="nt-off">Turn off on this device</button></div>
+      <p class="status" id="nt-st"></p>`;
+  }
+  const st = () => box.querySelector("#nt-st");
+  const onB = box.querySelector("#nt-on");
+  if (onB) onB.addEventListener("click", async () => { onB.disabled = true; st().textContent = "Turning on…"; try { await enablePush(); toast("🔔 Reminders are on."); paintNotify(box); } catch (e) { st().className = "status err"; st().textContent = e.message || "Couldn't turn them on."; onB.disabled = false; } });
+  const off = box.querySelector("#nt-off");
+  if (off) off.addEventListener("click", async () => { await disablePush().catch(() => {}); toast("Reminders are off for this device."); paintNotify(box); });
+  const test = box.querySelector("#nt-test");
+  if (test) test.addEventListener("click", async () => { test.disabled = true; st().className = "status"; st().textContent = "Sending…"; try { const r = await STORE.push.test(); st().textContent = `Sent to ${r.sent} device${r.sent === 1 ? "" : "s"}. It should pop up in a few seconds.`; } catch (e) { st().className = "status err"; st().textContent = e.message; } finally { test.disabled = false; } });
+  box.querySelectorAll("[data-nt]").forEach(el => el.addEventListener("change", () => {
+    const k = el.dataset.nt, v = el.type === "checkbox" ? el.checked : k === "classes" ? +el.value : el.value;
+    putSettings({ ...S.settings, notify: { ...notifyPrefs(), [k]: v } });
+  }));
 }
 /* Welcome back: after 2+ days away, a fresh start instead of a backlog. */
 function welcomeCheck(tries = 0) {

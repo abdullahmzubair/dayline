@@ -2,9 +2,9 @@
    - The app itself (page, settings, library, icons) is kept on the device, so Dayline opens instantly and offline.
    - Your data never goes through here: Supabase requests always go straight to the network.
    - A new upload gets a new version, and the page offers "New version, tap to refresh". */
-const VERSION = "20261021-04a39b46";
+const VERSION = "20261021-366d9ddd";
 const APP = "dayline-app-" + VERSION, FONTS = "dayline-fonts";
-const PRECACHE = ["./","./index.html","./config.js","./manifest.webmanifest","./icons/apple-touch-icon.png","./icons/favicon-32.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png","https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"];
+const PRECACHE = ["./","./index.html","./config.js","./manifest.webmanifest","./icons/apple-touch-icon.png","./icons/badge-96.png","./icons/favicon-32.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png","https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(APP).then(c => c.addAll(PRECACHE.map(u => new Request(u, { cache: "reload" })))));
@@ -13,6 +13,23 @@ self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith("dayline-app-") && k !== APP).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("message", e => { if (e.data === "skipWaiting") self.skipWaiting(); });
+
+/* Reminders from the Supabase function: show them, and open Dayline when tapped. */
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (x) { d = { body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "Dayline", {
+    body: d.body || "", tag: d.tag || undefined, icon: "icons/icon-192.png", badge: "icons/badge-96.png", data: { url: d.url || "./" }
+  }));
+});
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const target = new URL((e.notification.data && e.notification.data.url) || "./", self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    for (const c of list) if (c.url.startsWith(self.registration.scope) && "focus" in c) return c.focus();
+    return self.clients.openWindow(target);
+  }));
+});
 
 self.addEventListener("fetch", e => {
   const req = e.request, url = new URL(req.url);
