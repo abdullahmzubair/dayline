@@ -811,11 +811,77 @@ details.tv summary { cursor: pointer; font-size: 13px; color: var(--accent); }
   .tt-list .tt-s:last-of-type { grid-column: 1 / -1; }
 }#projEditBtn { margin-right: 12px; }
 /* standalone sign-in */
-.login { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: var(--bg); overflow: auto; }
-.login-card { width: min(420px, 100%); display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; box-shadow: var(--shadow); }
-.login-card h1 { margin: 0; font-family: var(--f-display); font-size: 26px; }
-.login-f { display: grid; gap: 10px; }
-.login-f input { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 10px 12px; color: var(--fg); font-size: 16px; }/* smart add chips + swipe rows */
+.login { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px 16px; overflow: auto; font-family: var(--f-body); font-size: 17px; line-height: 1.5; color: var(--fg);
+  background: radial-gradient(circle at 15% 10%, var(--accent-soft), transparent 55%), radial-gradient(circle at 90% 90%, color-mix(in srgb, var(--now) 14%, transparent), transparent 50%), var(--bg); }
+.lg-wrap { width: min(980px, 100%); display: grid; grid-template-columns: 1fr; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow); }
+.lg-side { display: none; }
+.lg-card { padding: 28px 22px 32px; display: grid; gap: 4px; align-content: start; }
+.lg-card h1 { margin: 18px 0 4px; font-family: var(--f-display); font-size: 30px; line-height: 1.15; }
+.lg-sub { margin: 0 0 14px; color: var(--muted); font-size: 17px; }
+.lg-brand-sm { font-size: 24px; }
+.lg-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-top: 18px; background: var(--sunk); border-radius: 12px; }
+.lg-tabs button { border: 0; background: none; border-radius: 9px; padding: 11px 8px; font: inherit; font-size: 16px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.lg-tabs button[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+.lg-form { display: grid; gap: 6px; }
+.lg-l { font-size: 16px; font-weight: 700; color: var(--fg); margin-top: 8px; }
+.lg-in { width: 100%; box-sizing: border-box; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; padding: 14px 16px; font: inherit; font-size: 17px; }
+.lg-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.lg-pw { position: relative; }
+.lg-pw .lg-in { padding-right: 56px; }
+.lg-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: 0; background: none; font-size: 20px; cursor: pointer; border-radius: 10px; }
+.lg-eye:hover { background: var(--sunk); }
+.lg-rule { margin: 2px 0 0; font-size: 15px; color: var(--muted); }
+.lg-rule.ok { color: var(--accent); font-weight: 700; }
+.lg-msg { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; padding: 12px 14px; border-radius: 12px; font-size: 16px; }
+.lg-msg.err { background: color-mix(in srgb, var(--must) 12%, var(--surface)); color: var(--fg); border-left: 4px solid var(--must); }
+.lg-msg.ok { background: var(--accent-soft); color: var(--fg); border-left: 4px solid var(--accent); }
+.lg-go { width: 100%; margin-top: 16px; padding: 15px 18px; font-size: 18px; border-radius: 12px; }
+.lg-forgot { justify-self: center; margin-top: 14px; font-size: 16px; }
+.lg-env { font-size: 56px; line-height: 1; margin-top: 18px; }
+.lg-steps { margin: 4px 0 10px; padding-left: 24px; display: grid; gap: 8px; font-size: 17px; }
+.lg-tip { padding: 12px 14px; border-radius: 12px; background: var(--sunk); font-size: 16px; }
+.lg-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 14px; font-size: 16px; }
+@media (min-width: 860px) {
+  .lg-wrap { grid-template-columns: 1fr 1.05fr; min-height: 560px; }
+  .lg-side { display: grid; align-content: center; gap: 22px; padding: 48px; background: var(--accent); color: var(--accent-ink); }
+  .lg-side h2 { margin: 0; font-family: var(--f-display); font-size: 34px; line-height: 1.15; }
+  .lg-side ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; font-size: 17px; }
+  .lg-side li { display: flex; gap: 14px; align-items: flex-start; }
+  .lg-side li > span { font-size: 26px; line-height: 1; }
+  .lg-fine { margin: 6px 0 0; opacity: .85; font-size: 15px; }
+  .lg-brand-inv { font-size: 26px; color: inherit; }
+  .lg-brand-inv i { background: var(--accent-ink); }
+  .lg-brand-sm { display: none; }
+  .lg-card { padding: 48px; align-content: center; }
+  .lg-tabs { margin-top: 0; }
+}/* beginner tour */
+.tour { position: fixed; inset: 0; z-index: 90; }
+.tour.no-target { background: rgba(10, 18, 14, .6); }
+.tour-hole { position: fixed; border-radius: 14px; box-shadow: 0 0 0 4px var(--accent), 0 0 0 9999px rgba(10, 18, 14, .6); transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; pointer-events: none; }
+.tour-card { position: fixed; width: min(380px, calc(100vw - 32px)); box-sizing: border-box; background: var(--surface); color: var(--fg); border-radius: 18px; padding: 18px 20px 16px; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); display: grid; gap: 10px; font-size: 17px; line-height: 1.5; }
+.tour.no-target .tour-card { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
+.tour-card.dock-bottom { left: 16px !important; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); top: auto !important; width: auto; }
+.tour-card.dock-top { left: 16px !important; right: 16px; top: calc(16px + env(safe-area-inset-top, 0px)) !important; width: auto; }
+.tour-top { display: flex; justify-content: space-between; align-items: center; }
+.tour-ic { font-size: 34px; line-height: 1; }
+.tour-n { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.tour-card h2 { margin: 0; font-family: var(--f-display); font-size: 22px; line-height: 1.2; }
+.tour-card p { margin: 0; }
+.tour-dots { display: flex; gap: 4px; }
+.tour-dots i { flex: 1; height: 5px; border-radius: 3px; background: var(--sunk); }
+.tour-dots i.on { background: var(--accent); }
+.tour-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.tour-btns .btn { min-height: 46px; padding-inline: 18px; font-size: 16px; }
+.tour-btns .btn.primary { flex: 1 1 auto; max-width: 220px; }
+.tour-skip { justify-self: center; font-size: 14px; }
+.tour-demo { position: relative; height: 48px; border-radius: 12px; overflow: hidden; background: var(--sunk); }
+.td-bg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 12px; font-weight: 700; font-size: 14px; }
+.td-bg.r { left: 0; color: var(--accent); }
+.td-bg.l { right: 0; color: var(--warn-fg); }
+.td-row { position: absolute; inset: 0; display: flex; gap: 10px; align-items: center; padding: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: 15px; animation: td-swipe 4s ease-in-out infinite; }
+.td-row i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--muted); }
+@keyframes td-swipe { 0%, 12% { transform: none; } 30%, 40% { transform: translateX(42%); } 52%, 62% { transform: none; } 78%, 88% { transform: translateX(-42%); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .td-row { animation: none; } .tour-hole { transition: none; } }/* smart add chips + swipe rows */
 .qchips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
 .qchips:empty { display: none; }
 .qc { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--line); color: var(--muted); }
@@ -1221,62 +1287,138 @@ function offlineScreen() {
 }
 function loginScreen(sb) {
   return new Promise(() => {
+    const back = location.origin + location.pathname;
+    let known = false; try { known = localStorage.getItem("dayline-has-account") === "1"; } catch (e) {}
     const el = document.createElement("div");
     el.className = "login";
-    el.innerHTML = `<div class="login-card">
-      <div class="brand"><i aria-hidden="true"></i>Dayline</div>
-      <h1 id="lg-h">Sign in</h1>
-      <p class="hint" id="lg-p">Use the same email and password on your phone, tablet and computer to see the same plan.</p>
-      <form id="lg-f" class="login-f">
-        <label class="f">Email<input id="lg-e" type="email" autocomplete="email" required placeholder="you@example.com"></label>
-        <label class="f">Password<input id="lg-w" type="password" autocomplete="current-password" required minlength="8" placeholder="At least 8 characters"></label>
-        <button class="btn primary" id="lg-go">Sign in</button>
-      </form>
-      <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <button type="button" class="link" id="lg-mode">New here? Create an account</button>
-        <button type="button" class="link" id="lg-link">Forgot password? Email me a sign-in link</button>
-      </div>
-      <p class="status" id="lg-st" role="status"></p>
+    el.innerHTML = `<div class="lg-wrap">
+      <aside class="lg-side">
+        <div class="brand lg-brand-inv"><i aria-hidden="true"></i>Dayline</div>
+        <h2>A calm plan for a busy brain.</h2>
+        <ul>
+          <li><span aria-hidden="true">🧠</span><div><b>Empty your head</b><br>Type everything out. Dayline helps you sort it.</div></li>
+          <li><span aria-hidden="true">⭐</span><div><b>Pick one win a day</b><br>One thing that would make today feel good.</div></li>
+          <li><span aria-hidden="true">✨</span><div><b>Stuck? Tap What now</b><br>Dayline picks the next thing for you.</div></li>
+        </ul>
+        <p class="lg-fine">Free · Private to you · Phone, tablet and computer</p>
+      </aside>
+      <main class="lg-card">
+        <div class="brand lg-brand-sm"><i aria-hidden="true"></i>Dayline</div>
+        <div id="lg-v-form">
+          <div class="lg-tabs" role="tablist" aria-label="Sign in or create an account">
+            <button type="button" role="tab" data-m="up">Create account</button>
+            <button type="button" role="tab" data-m="in">Sign in</button>
+          </div>
+          <h1 id="lg-h"></h1>
+          <p class="lg-sub" id="lg-p"></p>
+          <form id="lg-f" class="lg-form" novalidate>
+            <label class="lg-l" for="lg-e">Email</label>
+            <input id="lg-e" class="lg-in" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com">
+            <label class="lg-l" for="lg-w">Password</label>
+            <div class="lg-pw"><input id="lg-w" class="lg-in" type="password" autocomplete="current-password"><button type="button" class="lg-eye" id="lg-eye" aria-label="Show password" aria-pressed="false">👁</button></div>
+            <div id="lg-new" hidden>
+              <p class="lg-rule" id="lg-rule">○ At least 8 characters</p>
+              <label class="lg-l" for="lg-w2">Type the password again</label>
+              <input id="lg-w2" class="lg-in" type="password" autocomplete="new-password">
+            </div>
+            <div class="lg-msg" id="lg-msg" role="alert" hidden></div>
+            <button class="btn primary lg-go" id="lg-go"></button>
+          </form>
+          <button type="button" class="link lg-forgot" id="lg-forgot">Forgot your password?</button>
+        </div>
+        <div id="lg-v-mail" hidden>
+          <div class="lg-env" aria-hidden="true">✉️</div>
+          <h1 id="lg-mh">Check your email</h1>
+          <p class="lg-sub" id="lg-mp"></p>
+          <ol class="lg-steps" id="lg-ms"></ol>
+          <div class="lg-tip">💡 Can't find it? Look in <b>Spam</b> or <b>Promotions</b>. It can take a minute to arrive.</div>
+          <div class="lg-msg" id="lg-msg2" role="status" hidden></div>
+          <button type="button" class="btn primary lg-go" id="lg-done">I've confirmed, let me sign in</button>
+          <div class="lg-row"><button type="button" class="link" id="lg-resend">Send the email again</button><button type="button" class="link" id="lg-other">Use a different email</button></div>
+        </div>
+      </main>
     </div>`;
     document.body.appendChild(el);
     document.querySelector(".app").hidden = true;
-    const $l = s => el.querySelector(s), st = $l("#lg-st"), back = location.origin + location.pathname;
-    let create = false;
-    const setMode = c => {
-      create = c;
-      $l("#lg-h").textContent = c ? "Create your account" : "Sign in";
-      $l("#lg-go").textContent = c ? "Create account" : "Sign in";
-      $l("#lg-w").autocomplete = c ? "new-password" : "current-password";
-      $l("#lg-mode").textContent = c ? "Already have an account? Sign in" : "New here? Create an account";
-      st.textContent = "";
+    const $l = s => el.querySelector(s);
+    let mode = known ? "in" : "up", lastEmail = "", mailKind = "signup";
+    const msg = (box, text, kind) => { const m = $l(box); m.hidden = !text; m.className = "lg-msg " + (kind || "err"); m.innerHTML = text ? `<span aria-hidden="true">${kind === "ok" ? "✅" : "⚠️"}</span><span>${text}</span>` : ""; };
+    const setMode = m => {
+      mode = m; const up = m === "up";
+      el.querySelectorAll(".lg-tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.m === m)));
+      $l("#lg-h").textContent = up ? "Create your account" : "Welcome back";
+      $l("#lg-p").textContent = up ? "It takes a minute. You'll use this email and password to see your plan on every device." : "Sign in with the email and password you used before.";
+      $l("#lg-go").textContent = up ? "Create my account" : "Sign in";
+      $l("#lg-w").autocomplete = up ? "new-password" : "current-password";
+      $l("#lg-w").placeholder = up ? "Make up a password" : "Your password";
+      $l("#lg-new").hidden = !up; $l("#lg-forgot").hidden = up;
+      msg("#lg-msg", "");
     };
-    $l("#lg-mode").addEventListener("click", () => setMode(!create));
+    const showMail = (email, kind) => {
+      lastEmail = email; mailKind = kind;
+      $l("#lg-v-form").hidden = true; $l("#lg-v-mail").hidden = false; msg("#lg-msg2", "");
+      const signup = kind === "signup";
+      $l("#lg-mh").textContent = signup ? "Check your email" : "Check your email";
+      $l("#lg-mp").innerHTML = `We sent ${signup ? "a confirmation link" : "a sign-in link"} to <b>${esc(email)}</b>.`;
+      $l("#lg-ms").innerHTML = signup
+        ? `<li>Open the email from <b>Supabase Auth</b>.</li><li>Tap <b>Confirm your mail</b>.</li><li>Come back here and sign in with your password.</li>`
+        : `<li>Open the email from <b>Supabase Auth</b>.</li><li>Tap the <b>sign-in link</b>, on this device.</li><li>Then set a new password in ⚙ Settings → Account.</li>`;
+      $l("#lg-done").hidden = !signup;
+    };
+    const rule = () => { const ok = $l("#lg-w").value.length >= 8; const r = $l("#lg-rule"); r.textContent = (ok ? "✓" : "○") + " At least 8 characters"; r.classList.toggle("ok", ok); };
+    el.querySelectorAll(".lg-tabs button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.m)));
+    $l("#lg-w").addEventListener("input", rule);
+    $l("#lg-eye").addEventListener("click", () => {
+      const show = $l("#lg-w").type === "password";
+      ["#lg-w", "#lg-w2"].forEach(s => { $l(s).type = show ? "text" : "password"; });
+      $l("#lg-eye").setAttribute("aria-pressed", String(show)); $l("#lg-eye").setAttribute("aria-label", show ? "Hide password" : "Show password");
+      $l("#lg-eye").textContent = show ? "🙈" : "👁";
+    });
     $l("#lg-f").addEventListener("submit", async e => {
       e.preventDefault();
-      const email = $l("#lg-e").value.trim(), password = $l("#lg-w").value;
-      $l("#lg-go").disabled = true; st.textContent = create ? "Creating your account…" : "Signing in…";
-      const r = create ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: back } }) : await sb.auth.signInWithPassword({ email, password });
-      $l("#lg-go").disabled = false;
+      const email = $l("#lg-e").value.trim(), password = $l("#lg-w").value, up = mode === "up";
+      if (!/^\S+@\S+\.\S+$/.test(email)) { msg("#lg-msg", "Type your email address, like <b>you@gmail.com</b>."); $l("#lg-e").focus(); return; }
+      if (!password) { msg("#lg-msg", up ? "Make up a password." : "Type your password."); $l("#lg-w").focus(); return; }
+      if (up && password.length < 8) { msg("#lg-msg", "Your password needs at least 8 characters."); $l("#lg-w").focus(); return; }
+      if (up && password !== $l("#lg-w2").value) { msg("#lg-msg", "The two passwords don't match. Try typing them again."); $l("#lg-w2").focus(); return; }
+      const go = $l("#lg-go"), label = go.textContent;
+      go.disabled = true; go.textContent = up ? "Creating your account…" : "Signing in…"; msg("#lg-msg", "");
+      const r = up ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: back } }) : await sb.auth.signInWithPassword({ email, password });
+      go.disabled = false; go.textContent = label;
       if (r.error) {
         const m = r.error.message || "";
-        st.textContent = /confirm/i.test(m) ? "Confirm your email first: tap the link in the email we sent, then sign in here."
-          : /invalid login/i.test(m) ? "Email or password doesn't match. New here? Tap Create an account."
-          : /already registered|already exists/i.test(m) ? "There's already an account with that email. Sign in instead."
-          : /rate/i.test(m) ? "Too many tries just now. Wait a few minutes and try again." : m;
+        if (/confirm/i.test(m)) { showMail(email, "signup"); msg("#lg-msg2", "You still need to confirm your email. Tap the link in the email first."); return; }
+        msg("#lg-msg", /invalid login/i.test(m) ? "That email and password don't match. Check for typos, or tap <b>Create account</b> if you're new."
+          : /already registered|already exists/i.test(m) ? "There's already an account with that email. Tap <b>Sign in</b> instead."
+          : /rate|too many/i.test(m) ? "Too many tries just now. Wait a few minutes, then try again."
+          : /fetch|network/i.test(m) ? "Can't reach Dayline. Check you're online and try again." : esc(m));
         return;
       }
+      try { localStorage.setItem("dayline-has-account", "1"); } catch (e) {}
       if (r.data && r.data.session) { location.reload(); return; }
-      setMode(false);
-      st.textContent = `Almost there. We emailed ${email}. Tap the link in it to confirm, then sign in here with your password.`;
+      /* Supabase hides whether an email is already taken: an empty identities list means it is. */
+      if (up && r.data && r.data.user && Array.isArray(r.data.user.identities) && !r.data.user.identities.length) { setMode("in"); msg("#lg-msg", "There's already an account with that email. Sign in with your password."); return; }
+      showMail(email, "signup");
     });
-    $l("#lg-link").addEventListener("click", async () => {
+    $l("#lg-forgot").addEventListener("click", async () => {
       const email = $l("#lg-e").value.trim();
-      if (!email) { st.textContent = "Type your email above first."; $l("#lg-e").focus(); return; }
-      st.textContent = "Sending…";
+      if (!/^\S+@\S+\.\S+$/.test(email)) { msg("#lg-msg", "Type your email above first, then tap <b>Forgot your password?</b> again."); $l("#lg-e").focus(); return; }
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: back, shouldCreateUser: false } });
-      st.textContent = error ? (/rate/i.test(error.message) ? "Too many emails just now. Wait a few minutes and try again." : error.message)
-        : `Check ${email} and tap the sign-in link. Then set a new password in ⚙ Settings → Account.`;
+      if (error) { msg("#lg-msg", /rate/i.test(error.message) ? "Too many emails just now. Wait a few minutes and try again." : esc(error.message)); return; }
+      showMail(email, "link");
     });
+    $l("#lg-done").addEventListener("click", () => { $l("#lg-v-mail").hidden = true; $l("#lg-v-form").hidden = false; setMode("in"); $l("#lg-e").value = lastEmail; $l("#lg-w").value = ""; $l("#lg-w").focus(); });
+    $l("#lg-other").addEventListener("click", () => { $l("#lg-v-mail").hidden = true; $l("#lg-v-form").hidden = false; $l("#lg-e").value = ""; $l("#lg-e").focus(); });
+    $l("#lg-resend").addEventListener("click", async () => {
+      const b = $l("#lg-resend"); b.disabled = true;
+      const { error } = mailKind === "signup"
+        ? await sb.auth.resend({ type: "signup", email: lastEmail, options: { emailRedirectTo: back } })
+        : await sb.auth.signInWithOtp({ email: lastEmail, options: { emailRedirectTo: back, shouldCreateUser: false } });
+      b.disabled = false;
+      msg("#lg-msg2", error ? (/rate|seconds/i.test(error.message) ? "Please wait a minute before sending another email." : esc(error.message)) : "Sent again. Check your inbox (and Spam).", error ? "err" : "ok");
+    });
+    setMode(mode);
+    setTimeout(() => $l("#lg-e").focus(), 50);
   });
 }async function SupabaseAdapter() {
   const cfg = supaConfig(); if (!cfg) return null;
@@ -1284,6 +1426,7 @@ function loginScreen(sb) {
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
   let { data: { session } } = await sb.auth.getSession();
   if (!session) await loginScreen(sb); /* never resolves: signing in reloads the page */
+  try { localStorage.setItem("dayline-has-account", "1"); } catch (e) {}
   const uid = session.user.id, T = "dayline_docs", CK = "dayline-cache-" + uid;
   const maps = { task: new Map(), day: new Map(), review: new Map(), settings: new Map() };
   const pending = new Map(); /* writes still on their way: ignore stale echoes for these */
@@ -1309,6 +1452,7 @@ function loginScreen(sb) {
     }
     for (const k of Object.keys(maps)) for (const [id, v] of maps[k]) if (pending.get(k + ":" + id)) fresh[k].set(id, v); /* keep local edits not yet saved */
     Object.assign(maps, fresh); emit(ALL);
+    if (!maps.settings.has("me") && cb) cb.onSettings({}); /* brand-new account: no settings saved yet */
   }
   const write = (kind, id, data) => {
     const key = kind + ":" + id;
@@ -1730,14 +1874,14 @@ function renderKick() {
     <div class="energy" role="group" aria-label="Energy ${D === td ? "today" : "this day"}"><span class="lb">Energy</span>${Object.entries(ENERGY).map(([k, v]) => `<button data-energy="${k}" aria-pressed="${dd.energy === k}">${v}</button>`).join("")}</div>
     <div><button class="btn sm${bdLines ? "" : " primary"}" id="kDump">${bdLines ? "Open brain dump" : "Start brain dump"}</button></div>
   </div>
-  <div class="step${hl ? " ok" : ""}">
+  <div class="step step-hl${hl ? " ok" : ""}">
     <div class="step-h"><b>2</b>Today's highlight</div>
     ${hl ? `<div class="hl tint${hl.done ? " done" : ""}" style="${pcs(hl)}"><span class="tt"><span class="star">★</span>${esc(hl.title)}</span><span class="meta">${ptag(hl)}<span class="chip">${hl.sched && hl.sched.date === D ? fmtT(hl.sched.start) : "not on the timeline yet"}</span><span class="chip">${fmtDur(+hl.minutes || 30)}</span>${dd.hlWhy ? `<span class="chip">Chosen for ${esc(String(dd.hlWhy).toLowerCase())}</span>` : ""}</span></div>
       <p class="hlmsg${hl.done ? " ok" : ""}">${hl.done ? "🎉 Highlight done. That's the day won!" : "👉 Complete your daily highlight - you've got this!"}</p>
       <div class="row" style="flex-wrap:wrap;gap:6px">${!hl.done && D === td ? `<button class="btn sm primary" data-start="${esc(hl.id)}" style="flex:0 0 auto">${hl.run ? "Focusing…" : hl.paused ? "Resume" : "Start"}</button>` : ""}<button class="btn sm ghost" id="kPick" style="flex:0 0 auto">Change</button></div>`
       : `<p class="hint">The one thing that would make ${D === td ? "today" : "this day"} feel like a win. It goes into your best focus time.</p><div><button class="btn sm primary" id="kPick">Pick a highlight</button></div>`}
   </div>
-  <div class="step${dd.micro ? " ok" : ""}">
+  <div class="step step-mc${dd.micro ? " ok" : ""}">
     <div class="step-h"><b>3</b>2-minute micro-commitment</div>
     <div class="micro"><span class="txt">${esc(mc.text)}${mc.habit ? ` <span class="chip tagc" style="font-weight:400">· ${esc(mc.habit)}</span>` : ""}</span><button class="mbtn${dd.micro ? " on" : ""}" id="kMicro" aria-pressed="${dd.micro ? "true" : "false"}">${dd.micro ? "Done ✓" : "Done"}</button></div>
     <p class="mmsg${dd.micro ? " ok" : ""}">${dd.micro ? "✅ Commitment done. Congrats!" : mc.inherited ? "💪 Just 2 minutes. Keep yesterday's, or pick a fresh one for today." : "💪 Just 2 minutes - you can do this right now!"}</p>
@@ -2775,6 +2919,8 @@ function openSheet(html, mount, wide) {
 function closeSheet() {
   if (S.flushDump) { const f = S.flushDump; S.flushDump = null; f(); }
   $("#sheet").hidden = true; hideTip();
+  /* Closing (or finishing) first-run setup leads straight into the beginner tour. */
+  if (S.tourAfterSetup) { S.tourAfterSetup = false; if (!S.settings.tourDone) setTimeout(startTour, 250); }
 }
 $("#sheet").addEventListener("click", e => { if (e.target.id === "sheet" || e.target.closest("[data-close]")) closeSheet(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
@@ -3813,10 +3959,11 @@ function privacyHtml() {
 /* First-run setup: about you → projects → timetable → rhythm. Each step saves as you go, and every step can be skipped. */
 const SETUP_STEPS = ["You", "Projects", "Timetable", "Rhythm"];
 function openSetup(i = 0, ctx = { rows: [] }) {
+  S.tourAfterSetup = true;
   const s = S.settings;
   const head = `<p class="onb-k">Set up Dayline · ${i + 1} of ${SETUP_STEPS.length}</p><div class="onb-dots" aria-hidden="true">${SETUP_STEPS.map((_, j) => `<i class="${j <= i ? "on" : ""}"></i>`).join("")}</div>`;
   const nav = (next = "Next") => `<div class="btns" style="margin-top:18px">${i ? `<button type="button" class="btn ghost" id="su-back">Back</button>` : ""}<span class="sp"></span>${i ? `<button type="button" class="link" id="su-skip">Skip this step</button>` : ""}<button type="button" class="btn primary" id="su-next">${next}</button></div>`;
-  const go = (j, save) => { if (save) save(); if (j >= SETUP_STEPS.length) { putSettings({ ...S.settings, setupDone: true }); openOnboarding(0); return; } openSetup(j, ctx); };
+  const go = (j, save) => { if (save) save(); if (j >= SETUP_STEPS.length) { putSettings({ ...S.settings, setupDone: true }); closeSheet(); return; } openSetup(j, ctx); };
   const wire = (c, save) => {
     const b = c.querySelector("#su-back"); if (b) b.addEventListener("click", () => go(i - 1, save));
     const k = c.querySelector("#su-skip"); if (k) k.addEventListener("click", () => go(i + 1));
@@ -3844,6 +3991,129 @@ function openSetup(i = 0, ctx = { rows: [] }) {
     </div>${nav("Finish")}`, c => { c.querySelector("#su-p").value = s.peak || "morning"; wire(c, () => putSettings({ ...S.settings, peak: c.querySelector("#su-p").value, dayStart: c.querySelector("#su-ds").value || DEF.dayStart, dayEnd: c.querySelector("#su-de").value || DEF.dayEnd, bedtime: c.querySelector("#su-bt").value || "23:30" })); }, true);
 }
 
+/* ---------- Beginner tour: spotlights the real buttons, explained simply enough for a 10-year-old ---------- */
+const narrow = () => window.innerWidth <= 600;
+const visibleEl = sels => {
+  for (const s of [].concat(sels)) for (const el of document.querySelectorAll(s)) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 4 && r.height > 4 && getComputedStyle(el).visibility !== "hidden" && !el.closest("[hidden]")) return el;
+  }
+  return null;
+};
+const TOUR = [
+  { ic: "👋", h: () => `Hi${S.settings.name ? " " + esc(S.settings.name) : ""}! Want a quick tour?`, p: "I'll show you the most important buttons, one at a time. It takes about a minute. You can stop any time.", next: "Show me" },
+  { mode: "simple", kick: true, at: ".kick .step.dump", ic: "🧠", h: "Step 1: Brain dump", p: "Is your head full of stuff to do? Type it <b>all</b> in here. Messy is totally fine! Getting it out of your head makes you feel calmer." },
+  { mode: "simple", kick: true, at: ".kick .step-hl", ic: "⭐", h: "Step 2: Today's highlight", p: "Pick <b>one</b> thing that would make today feel like a win. Just one! If you only do that, today was a good day." },
+  { mode: "simple", kick: true, at: ".kick .step-mc", ic: "🏆", h: "Step 3: A 2-minute habit", p: "Something tiny, like reading one page or drinking a glass of water. So small you can't say no. Do it every day to grow your streak 🔥." },
+  { mode: "simple", at: ["#bbar [data-bb='now']", "#whatNowBtn", "#bedBtn"], ic: "✨", h: "Stuck? Tap What now", p: () => "Don't know what to do next? Tap this. Dayline picks <b>one</b> thing for you, so you don't have to think about it." + (isNight() ? " (At night it turns into <b>🌙 Bed</b> to help you wind down.)" : "") },
+  { mode: "simple", at: ["#bbar [data-bb='add']", "#addTaskBtn"], ic: "➕", h: "Add a task", p: "Type it the way you'd say it, like <b>“Homework tomorrow 30m”</b>. Dayline works out the day and how long it takes." },
+  { mode: "simple", at: ["#simpleView .list > li.ti", "#simpleView .list"], ic: "👉", h: () => narrow() ? "Swipe your tasks" : "Tick things off", p: () => narrow() ? "Finished something? <b>Swipe it right</b> ✅. Not today? <b>Swipe it left</b> to move it to tomorrow." : "Finished something? Tap the <b>circle</b> next to it ✅. Feels good!", demo: true },
+  { mode: "simple", at: [".modes"], ic: "🔀", h: "Simple or Full", p: "<b>Simple</b> shows just today, nice and calm. <b>Full</b> shows everything: your timeline, sprints and projects. Let's peek at Full!" },
+  { mode: "full", panel: "day", at: ["#tlWrap", ".panel.day"], ic: "📏", h: "Your day as a line", p: "Each coloured block is a task or a class, in time order. The orange line is <b>right now</b>. You can drag blocks to move them." },
+  { mode: "full", panel: "day", at: ["#planRow [data-plan]", "[data-plan]"], ic: "📋", h: "Plan my day", p: "Tap this and Dayline fits your tasks into the free gaps of your day, for you. Like magic, but it's maths." },
+  { mode: "full", at: ["#bbar [data-bb='tasks']", ".panel.tasks"], ic: "🗂️", h: "All your tasks", p: "Everything lives here: new tasks, things saved for later (<b>Task Capture</b>) and things you've finished." },
+  { at: ["#bbar [data-bb='more']", "#moreBtn"], ic: "⋯", h: "More stuff", p: "Your projects, timetable, weekly review and settings are in here. So is this tour, if you ever want to see it again." },
+  { ic: "🎉", h: "That's it! You know Dayline.", p: "Here's the secret: don't try to do everything. Do your <b>brain dump</b>, pick your <b>highlight</b>, then tap <b>What now</b>. That's a great day.", last: true }
+];
+let tourState = null;
+function startTour() {
+  if (tourState) return;
+  closeSheet(); closeFocusMode();
+  tourState = { i: 0, simple: !!S.settings.simple };
+  const el = document.createElement("div");
+  el.className = "tour"; el.id = "tour";
+  el.innerHTML = `<div class="tour-hole" aria-hidden="true"></div><div class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-h"></div>`;
+  document.body.appendChild(el);
+  document.addEventListener("keydown", tourKey, true);
+  window.addEventListener("resize", tourPlace);
+  tourShow(0);
+}
+function tourKey(e) {
+  if (!tourState) return;
+  if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); endTour(false); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); tourShow(tourState.i + 1); }
+  else if (e.key === "ArrowLeft" && tourState.i) { e.preventDefault(); tourShow(tourState.i - 1); }
+}
+function tourShow(i) {
+  if (!tourState) return;
+  if (i >= TOUR.length) { endTour(true); return; }
+  tourState.i = i; tourState.nudged = false;
+  const s = TOUR[i], val = v => typeof v === "function" ? v() : v;
+  /* Put the screen into the right view for this step. */
+  if (s.mode && !!S.settings.simple !== (s.mode === "simple")) putSettings({ ...S.settings, simple: s.mode === "simple" });
+  if (s.kick) { S.kickOpen = S.date; renderKick(); }
+  if (s.panel && typeof setPanel === "function") setPanel(s.panel);
+  const card = $("#tour .tour-card");
+  card.innerHTML = `<div class="tour-top"><span class="tour-ic" aria-hidden="true">${s.ic}</span><span class="tour-n">${i ? `${i} of ${TOUR.length - 2}` : ""}</span></div>
+    <h2 id="tour-h">${val(s.h)}</h2><p>${val(s.p)}</p>
+    ${s.demo && narrow() ? `<div class="tour-demo" aria-hidden="true"><span class="td-bg r">✓ Done</span><span class="td-bg l">Tomorrow →</span><div class="td-row"><i></i>Finish my homework</div></div>` : ""}
+    <div class="tour-dots" aria-hidden="true">${TOUR.slice(1, -1).map((_, j) => `<i class="${j < i ? "on" : ""}"></i>`).join("")}</div>
+    <div class="tour-btns">${s.last ? `<button type="button" class="btn" data-tour="explore">Look around</button><button type="button" class="btn primary" data-tour="dump">Start my brain dump</button>`
+      : `${i ? `<button type="button" class="btn ghost" data-tour="back">Back</button>` : `<button type="button" class="btn ghost" data-tour="skip">Not now</button>`}<button type="button" class="btn primary" data-tour="next">${s.next || "Next"}</button>`}</div>
+    ${i && !s.last ? `<button type="button" class="link tour-skip" data-tour="skip">Skip the tour</button>` : ""}`;
+  card.querySelectorAll("[data-tour]").forEach(b => b.addEventListener("click", () => {
+    const a = b.dataset.tour;
+    if (a === "next") tourShow(tourState.i + 1);
+    else if (a === "back") tourShow(tourState.i - 1);
+    else if (a === "skip") endTour(false);
+    else if (a === "explore") endTour(true);
+    else if (a === "dump") { endTour(true); openDayDump(); }
+  }));
+  const target = s.at ? visibleEl(s.at) : null;
+  tourState.target = target;
+  if (target) target.scrollIntoView({ block: "center", inline: "nearest" });
+  requestAnimationFrame(() => { tourPlace(); card.querySelector("[data-tour='next'],[data-tour='dump']").focus({ preventScroll: true }); });
+  setTimeout(tourPlace, 180); /* again once any scrolling has settled */
+}
+function tourPlace() {
+  if (!tourState) return;
+  const root = $("#tour"), hole = root.querySelector(".tour-hole"), card = root.querySelector(".tour-card");
+  const t = tourState.target && document.contains(tourState.target) ? tourState.target : null;
+  const vw = window.innerWidth, vh = window.innerHeight, pad = 8, gap = 14;
+  root.classList.toggle("no-target", !t);
+  card.style.left = card.style.top = card.style.bottom = ""; card.classList.remove("dock-top", "dock-bottom");
+  if (!t) { hole.style.cssText = "opacity:0"; return; }
+  const r = t.getBoundingClientRect();
+  const x = Math.max(4, r.left - pad), y = Math.max(4, r.top - pad), w = Math.min(vw - 8, r.width + pad * 2), h = Math.min(vh - 8, r.height + pad * 2);
+  hole.style.cssText = `opacity:1;left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+  if (narrow()) {
+    /* Dock the card at the top or bottom, whichever leaves the spotlight uncovered; scroll if the page can move that way. */
+    const free = card.offsetHeight + 28, canUp = window.scrollY, canDown = document.documentElement.scrollHeight - vh - window.scrollY;
+    const upNeed = free - r.top, downNeed = r.bottom - (vh - free);
+    let atTop, dy = 0;
+    if (upNeed <= 0) atTop = true;
+    else if (downNeed <= 0) atTop = false;
+    else if (upNeed <= canUp) { atTop = true; dy = -upNeed; }
+    else if (downNeed <= canDown && r.top - downNeed >= 8) { atTop = false; dy = downNeed; }
+    else { atTop = r.top + r.height / 2 > vh / 2; }
+    card.classList.add(atTop ? "dock-top" : "dock-bottom");
+    if (dy && !tourState.nudged) { tourState.nudged = true; window.scrollBy(0, dy); setTimeout(tourPlace, 60); }
+    return;
+  }
+  /* Below, above, right or left of the spotlight: the first that fits without covering it. */
+  const cw = card.offsetWidth, ch = card.offsetHeight, clampX = v => Math.min(vw - cw - 12, Math.max(12, v)), clampY = v => Math.min(vh - ch - 8, Math.max(8, v));
+  const cx = clampX(r.left + r.width / 2 - cw / 2), cy = clampY(r.top + r.height / 2 - ch / 2);
+  const spots = [
+    [y + h + gap + ch <= vh - 8, cx, y + h + gap],
+    [y - gap - ch >= 8, cx, y - gap - ch],
+    [x + w + gap + cw <= vw - 8, x + w + gap, cy],
+    [x - gap - cw >= 8, x - gap - cw, cy]
+  ];
+  const spot = spots.find(s => s[0]) || [true, cx, clampY(vh - ch - 16)];
+  card.style.left = spot[1] + "px"; card.style.top = spot[2] + "px";
+}
+function endTour(finished) {
+  if (!tourState) return;
+  const st = tourState; tourState = null;
+  document.removeEventListener("keydown", tourKey, true);
+  window.removeEventListener("resize", tourPlace);
+  const el = $("#tour"); if (el) el.remove();
+  putSettings({ ...S.settings, tourDone: true, simple: st.simple });
+  window.scrollTo({ top: 0 });
+  if (finished) { if (S.settings.celebrate !== false && typeof celebrate === "function") celebrate(false); toast("You're all set. Tap ⋯ More → ❔ How Dayline works to see the tour again."); }
+  else toast("No problem. You can see the tour any time in ⋯ More → ❔ How Dayline works.");
+}
+
 /* Welcome back: after 2+ days away, a fresh start instead of a backlog. */
 function welcomeCheck(tries = 0) {
   /* Wait for saved settings (and tasks) to arrive, so writing lastSeen never overwrites them with defaults. */
@@ -3853,11 +4123,13 @@ function welcomeCheck(tries = 0) {
   /* Projects became editable: people who used Dayline before keep their original modules; new people start general. */
   if (!Array.isArray(S.settings.projects)) putSettings(firstRun ? { ...S.settings, projects: GENERIC_PROJECTS }
     : { ...S.settings, projects: LEGACY_PROJECTS, about: S.settings.about != null ? S.settings.about : LEGACY_ABOUT, name: S.settings.name || "Abdullah", setupDone: true });
-  if (last === td && !firstRun) return;
+  const needTour = !firstRun && !S.settings.tourDone;
+  if (last === td && !firstRun && !needTour) return;
   const wid = isoWeekId(td), cheer = !!last && S.settings.lastCheer !== wid;
   /* Each new day starts calm in Simple mode; switching to Full lasts until tomorrow. */
   putSettings({ ...S.settings, lastSeen: td, lastCheer: wid, onboarded: true, ...(last !== td && S.settings.morningSimple !== false ? { simple: true } : {}) });
   if (firstRun && $("#sheet").hidden) { openSetup(0); return; }
+  if (needTour) { if ($("#sheet").hidden) setTimeout(startTour, 300); return; }
   if (last && daysBetween(last, td) >= 2 && $("#sheet").hidden) { openWelcomeBack(daysBetween(last, td)); return; }
   if (cheer) {
     /* First visit of a new week: celebrate how often you showed up last week. */
@@ -4600,7 +4872,7 @@ $("#settingsBtn").addEventListener("click", openSettings);
 $("#reviewBtn").addEventListener("click", openReview);
 $("#progressBtn").addEventListener("click", () => openProgress());
 $("#whatNowBtn").addEventListener("click", openWhatNow);
-$("#helpBtn").addEventListener("click", () => openOnboarding(0));
+$("#helpBtn").addEventListener("click", () => startTour());
 $("#sortBtn").addEventListener("click", openCleanup);
 $("#tplMenuBtn").addEventListener("click", () => openTemplates(S.filter));
 /* "More" menu: opens below its button, closes on outside click, Escape, or after picking something. */
