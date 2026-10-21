@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="theme-color" content="#1D6A4D"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/favicon-32.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Dayline"><script>window.DAYLINE_VERSION = "20261021-c7c82a3d";</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script><script src="config.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset="utf-8"><meta name="theme-color" content="#1D6A4D"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/favicon-32.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Dayline"><script>window.DAYLINE_VERSION = "20261021-4aebb5c6";</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script><script src="config.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Dayline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -901,7 +901,8 @@ details.tv summary { cursor: pointer; font-size: 13px; color: var(--accent); }
 .form > *, .f { min-width: 0; }
 .f input, .f select, .f textarea { min-width: 0; max-width: 100%; box-sizing: border-box; }
 input[type="time"], input[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; box-sizing: border-box; min-height: 40px; text-align: left; }
-input[type="time"]::-webkit-date-and-time-value, input[type="date"]::-webkit-date-and-time-value { text-align: left; }/* smart add chips + swipe rows */
+input[type="time"]::-webkit-date-and-time-value, input[type="date"]::-webkit-date-and-time-value { text-align: left; }/* desk buddy pairing */
+.paircode { font-family: var(--f-mono); font-size: 40px; font-weight: 500; letter-spacing: .12em; text-align: center; padding: 18px 10px; border-radius: 14px; background: var(--sunk); border: 2px dashed var(--line); user-select: all; }/* smart add chips + swipe rows */
 .qchips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
 .qchips:empty { display: none; }
 .qc { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--line); color: var(--muted); }
@@ -1552,6 +1553,19 @@ async function SupabaseAdapter() {
     get waiting() { return outbox.size; },
     home: "your Dayline account", account: session.user.email,
     ai, aiInbox: () => aiRows,
+    /* ESP32 desk buddy: make a pairing code, list paired buddies (with live status), unpair. */
+    buddy: {
+      async list() { const { data, error } = await sb.from("dayline_devices").select("id,name,status,last_seen,created_at").eq("user_id", uid).order("created_at"); if (error) throw error; return data || []; },
+      async pair(name) {
+        const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", r = crypto.getRandomValues(new Uint8Array(8)), code = Array.from(r, x => A[x % A.length]).join("");
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+        const { error } = await sb.from("dayline_pairing").insert({ user_id: uid, code, name: name || null, tz, expires_at: new Date(Date.now() + 10 * 60000).toISOString() });
+        if (error) throw error;
+        return code;
+      },
+      async unpair(id) { const { error } = await sb.from("dayline_devices").delete().eq("user_id", uid).eq("id", id); if (error) throw error; },
+      watch(fn) { const ch = sb.channel("dayline-dev-" + uid + "-" + Date.now()).on("postgres_changes", { event: "*", schema: "public", table: "dayline_devices", filter: `user_id=eq.${uid}` }, fn).subscribe(); return () => sb.removeChannel(ch); }
+    },
     async aiClear(id) { aiRows = aiRows.filter(r => r.id !== id); aiInboxChanged(); await sb.from("dayline_ai").delete().eq("user_id", uid).eq("id", id); },
     async changePassword(pw) { const { error } = await sb.auth.updateUser({ password: pw }); if (error) throw error; },
     /* Notifications: remember this device, forget it, or ask the server for a test. */
@@ -3224,6 +3238,7 @@ function openSettings() {
       <span class="hint" style="font-weight:400">From 8 pm, ✨ What now? becomes 🌙 Going to bed. In the morning you'll be asked how you slept.</span>
     </fieldset>
     ${IS_SITE ? `<fieldset class="f full"><legend>Reminders</legend><div id="nt-box" class="nt-box"><p class="hint">Checking…</p></div></fieldset>` : ""}
+    ${IS_SITE ? `<fieldset class="f full"><legend>Desk buddy</legend><div id="bd-box" class="nt-box"><p class="hint">Checking…</p></div></fieldset>` : ""}
     <fieldset class="f full"><legend>Helpers</legend>
       <div style="display:grid;gap:8px;font-weight:400;color:var(--fg);font-size:14px">
         <label style="display:flex;gap:8px;align-items:flex-start"><input id="s-real" type="checkbox" ${s.realistic !== false ? "checked" : ""} style="width:18px;height:18px;accent-color:var(--accent);flex:none;margin-top:2px"><span>Plan with realistic times<br><span class="hint">${ratios().overall ? `You usually take ${ratios().overall.toFixed(1)}× your estimates (from ${ratios().n} timed tasks). Plan my day and What now? use that.` : "Once you've timed 3 or more tasks, Dayline learns how long things really take you."}</span></span></label>
@@ -3250,6 +3265,7 @@ function openSettings() {
     c.querySelector("#s-exp").addEventListener("click", exportBackup);
     c.querySelector("#s-proj").addEventListener("click", openProjects);
     paintNotify(c.querySelector("#nt-box"));
+    paintBuddy(c.querySelector("#bd-box"));
     const so = c.querySelector("#s-out"); if (so) so.addEventListener("click", () => STORE.signOut());
     const spw = c.querySelector("#s-pw"); if (spw) spw.addEventListener("click", openChangePassword);
     c.querySelector("#s-tt").addEventListener("click", openTimetable);
@@ -4390,6 +4406,44 @@ function openAiResult(r) {
     if (!cards.length) { toast("Claude couldn't write questions this time."); return; }
     runQuiz(cards, "Answer in your head, then reveal.");
   } else toast("Claude's answer is ready, but this version of Dayline doesn't know how to show it. Reload and try again.");
+}
+/* ---------- Desk buddy (website): pair the ESP32 buddy and see what it's doing ---------- */
+const buddyOK = () => IS_SITE && STORE && STORE.buddy;
+function buddyAgo(ts) { if (!ts) return "never"; const m = Math.round((Date.now() - new Date(ts)) / 60000); return m < 2 ? "online now" : m < 60 ? `last seen ${m} min ago` : m < 1440 ? `last seen ${Math.round(m / 60)} h ago` : `last seen ${Math.round(m / 1440)} d ago`; }
+function buddyDoing(st) {
+  if (!st || !st.mode || st.mode === "idle") return "Idle";
+  const left = st.endsAt ? Math.max(0, Math.round((st.endsAt * (st.endsAt < 1e12 ? 1000 : 1) - Date.now()) / 60000)) : null;
+  return { focus: "🎯 Focusing", break: "☕ On a break", paused: "⏸ Paused" }[st.mode] + (left != null && st.mode !== "paused" ? ` · ${left} min left` : "") + (st.sessions ? ` · ${st.sessions} session${st.sessions === 1 ? "" : "s"} today` : "");
+}
+async function paintBuddy(box) {
+  if (!box || !buddyOK()) return;
+  let list = [];
+  try { list = await STORE.buddy.list(); }
+  catch (e) { box.innerHTML = `<p class="hint">The desk buddy isn't set up in Supabase yet.</p>`; return; }
+  box.innerHTML = `<p class="nt-lead">Your ESP32 desk buddy shows what's next and keeps its timer in sync with Dayline. <b>Start</b> on the buddy starts the task Dayline suggests; <b>Done</b> ticks it off here.</p>
+    ${list.length ? `<ul class="rvl">${list.map(d => `<li><div class="b"><b>🤖 ${esc(d.name || "Desk buddy")}</b><span class="hint">${esc(buddyAgo(d.last_seen))} · ${esc(buddyDoing(d.status))}</span></div><button type="button" class="btn sm ghost" data-unpair="${esc(d.id)}">Unpair</button></li>`).join("")}</ul>` : ""}
+    <div class="row" style="justify-content:flex-start"><button type="button" class="btn${list.length ? "" : " primary"}" id="bd-pair">🤖 Pair ${list.length ? "another" : "a"} desk buddy</button></div>`;
+  box.querySelector("#bd-pair").addEventListener("click", openBuddyPair);
+  box.querySelectorAll("[data-unpair]").forEach(b => twoStepDelete(b, async () => { try { await STORE.buddy.unpair(b.dataset.unpair); toast("Buddy unpaired. It will ask to be paired again."); } catch (e) { toast("Couldn't unpair just now."); } paintBuddy(box); }));
+  if (!box._watch) { box._watch = STORE.buddy.watch(() => { if (document.contains(box)) paintBuddy(box); else { box._watch(); box._watch = null; } }); }
+}
+async function openBuddyPair() {
+  let code;
+  try { code = await STORE.buddy.pair(); }
+  catch (e) { toast(navigator.onLine ? "Couldn't make a pairing code. Try again." : "You're offline. Pairing needs the internet."); return; }
+  const shown = code.slice(0, 4) + "-" + code.slice(4);
+  openSheet(`<h2>Pair your desk buddy</h2>
+  <p class="hint" style="margin:-6px 0 12px">On the buddy's setup screen, type this code. It works once, for 10 minutes.</p>
+  <div class="paircode" aria-label="Pairing code ${esc(code.split("").join(" "))}">${esc(shown)}</div>
+  <p class="status" id="bp-st" role="status">Waiting for your buddy…</p>
+  <div class="btns" style="margin-top:12px"><span class="sp"></span><button type="button" class="btn primary" data-close>Done</button></div>`, c => {
+    const stop = STORE.buddy.watch(p => {
+      if (p.eventType !== "INSERT") return;
+      const st = c.querySelector("#bp-st"); if (!st) { stop(); return; }
+      st.className = "status"; st.textContent = `✅ Paired with “${(p.new && p.new.name) || "your desk buddy"}”. You can close this.`;
+      celebrate(false); stop();
+    });
+  });
 }
 /* Welcome back: after 2+ days away, a fresh start instead of a backlog. */
 function welcomeCheck(tries = 0) {
