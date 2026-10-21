@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="theme-color" content="#1D6A4D"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script><script src="config.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset="utf-8"><meta name="theme-color" content="#1D6A4D"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/favicon-32.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Dayline"><script>window.DAYLINE_VERSION = "20261021-04a39b46";</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script><script src="config.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Dayline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -881,7 +881,10 @@ details.tv summary { cursor: pointer; font-size: 13px; color: var(--accent); }
 .td-row { position: absolute; inset: 0; display: flex; gap: 10px; align-items: center; padding: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: 15px; animation: td-swipe 4s ease-in-out infinite; }
 .td-row i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--muted); }
 @keyframes td-swipe { 0%, 12% { transform: none; } 30%, 40% { transform: translateX(42%); } 52%, 62% { transform: none; } 78%, 88% { transform: translateX(-42%); } 100% { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .td-row { animation: none; } .tour-hole { transition: none; } }/* smart add chips + swipe rows */
+@media (prefers-reduced-motion: reduce) { .td-row { animation: none; } .tour-hole { transition: none; } }/* offline badge + install steps */
+.offpill { position: fixed; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 60; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 700; padding: 6px 14px; border-radius: 999px; box-shadow: var(--shadow); pointer-events: none; }
+.inst { margin: 0; padding-left: 22px; display: grid; gap: 10px; font-size: 16px; }
+.inst .kb { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunk); font-size: 13px; }/* smart add chips + swipe rows */
 .qchips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
 .qchips:empty { display: none; }
 .qc { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--line); color: var(--muted); }
@@ -926,6 +929,7 @@ details.tv summary { cursor: pointer; font-size: 13px; color: var(--accent); }
           <button id="reviewBtn">🗓️ Weekly review</button>
           <button id="progressBtn">📈 Progress</button>
           <button id="tplMenuBtn">🧩 Step templates</button>
+          <button id="installBtn" hidden>📲 Install Dayline</button>
           <button id="helpBtn">❔ How Dayline works</button>
           <button id="settingsBtn">⚙ Settings</button>
         </div>
@@ -1420,17 +1424,33 @@ function loginScreen(sb) {
     setMode(mode);
     setTimeout(() => $l("#lg-e").focus(), 50);
   });
-}async function SupabaseAdapter() {
+}
+
+async function SupabaseAdapter() {
   const cfg = supaConfig(); if (!cfg) return null;
   if (!window.supabase) await offlineScreen();
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
-  let { data: { session } } = await sb.auth.getSession();
+  let session = null, sErr = null;
+  try { const r = await sb.auth.getSession(); session = r.data.session; sErr = r.error; } catch (e) { sErr = e; }
+  /* Offline with an expired sign-in: keep working from this device's copy and sync once back online. */
+  if (!session && (!navigator.onLine || sErr)) {
+    try {
+      const ref = new URL(cfg.supabaseUrl).hostname.split(".")[0], raw = JSON.parse(localStorage.getItem(`sb-${ref}-auth-token`) || "null");
+      const u = raw && (raw.user || (raw.currentSession && raw.currentSession.user));
+      if (u && u.id) session = { user: u };
+    } catch (e) {}
+  }
   if (!session) await loginScreen(sb); /* never resolves: signing in reloads the page */
   try { localStorage.setItem("dayline-has-account", "1"); } catch (e) {}
-  const uid = session.user.id, T = "dayline_docs", CK = "dayline-cache-" + uid;
+  const uid = session.user.id, T = "dayline_docs", CK = "dayline-cache-" + uid, OK = "dayline-outbox-" + uid;
   const maps = { task: new Map(), day: new Map(), review: new Map(), settings: new Map() };
-  const pending = new Map(); /* writes still on their way: ignore stale echoes for these */
-  let cb = null, timer = null;
+  /* Outbox: changes not yet saved to the server, kept on the device so nothing is lost offline or on a reload. */
+  let outbox = new Map();
+  try { outbox = new Map(JSON.parse(localStorage.getItem(OK) || "[]")); } catch (e) {}
+  const saveOutbox = () => { try { localStorage.setItem(OK, JSON.stringify([...outbox.entries()])); } catch (e) {} };
+  let cb = null, timer = null, offline = !navigator.onLine, flushing = false, retry = null;
+  const netErr = e => !navigator.onLine || !e || e.status === 0 || /fetch|network|load failed|timed? ?out|abort/i.test(String(e.message || e));
+  const setOffline = v => { if (offline !== v) { offline = v; render(); } };
   const emit = kinds => {
     if (!cb) return;
     if (kinds.has("task")) cb.onItems([...maps.task.values()].map(d => ({ ...d })));
@@ -1450,41 +1470,66 @@ function loginScreen(sb) {
       data.forEach(r => fresh[r.kind] && fresh[r.kind].set(r.id, r.kind === "task" ? { ...r.data, id: r.id } : r.data));
       if (data.length < 1000) break;
     }
-    for (const k of Object.keys(maps)) for (const [id, v] of maps[k]) if (pending.get(k + ":" + id)) fresh[k].set(id, v); /* keep local edits not yet saved */
+    /* Local changes still in the outbox win over what the server has. */
+    for (const o of outbox.values()) { if (o.data == null) fresh[o.kind].delete(o.id); else fresh[o.kind].set(o.id, o.kind === "task" ? { ...o.data, id: o.id } : o.data); }
     Object.assign(maps, fresh); emit(ALL);
     if (!maps.settings.has("me") && cb) cb.onSettings({}); /* brand-new account: no settings saved yet */
+    setOffline(false);
+  }
+  async function flush() {
+    if (flushing || !outbox.size) return;
+    flushing = true; clearTimeout(retry);
+    for (const [key, o] of [...outbox.entries()]) {
+      const { error } = o.data == null ? await sb.from(T).delete().eq("user_id", uid).eq("kind", o.kind).eq("id", o.id)
+        : await sb.from(T).upsert({ user_id: uid, kind: o.kind, id: o.id, data: o.data, updated_at: new Date(o.at).toISOString() }, { onConflict: "user_id,kind,id" });
+      if (error && netErr(error)) { setOffline(true); break; }
+      if (outbox.get(key) === o) outbox.delete(key); /* a newer change to the same thing stays queued */
+      if (error) toast(/quota|size/i.test(error.message) ? "Storage is full. Delete some finished tasks to make room." : "One change couldn't be saved: " + error.message);
+      else setOffline(false);
+    }
+    saveOutbox(); flushing = false; render();
+    if (outbox.size) retry = setTimeout(flush, offline ? 20000 : 1500);
   }
   const write = (kind, id, data) => {
-    const key = kind + ":" + id;
     apply(kind, id, data);
-    pending.set(key, (pending.get(key) || 0) + 1);
-    const q = data == null ? sb.from(T).delete().eq("user_id", uid).eq("kind", kind).eq("id", id)
-      : sb.from(T).upsert({ user_id: uid, kind, id, data: JSON.parse(JSON.stringify(data)), updated_at: new Date().toISOString() }, { onConflict: "user_id,kind,id" });
-    return q.then(({ error }) => {
-      const n = (pending.get(key) || 1) - 1; if (n > 0) pending.set(key, n); else pending.delete(key);
-      if (error) throw { code: /quota|size/i.test(error.message) ? "quota_exceeded" : "unavailable", message: error.message };
-      saveCache();
-    });
+    outbox.set(kind + ":" + id, { kind, id, data: data == null ? null : JSON.parse(JSON.stringify(data)), at: Date.now() });
+    saveOutbox(); saveCache();
+    flush();
+    return Promise.resolve(); /* saved on this device; the server copy follows */
   };
+  window.addEventListener("online", () => { setOffline(false); flush(); fetchAll().catch(() => {}); });
+  window.addEventListener("offline", () => setOffline(true));
   const store = {
-    label: `Synced to your Dayline account (${session.user.email}). Same plan on every device you sign in on.`, synced: true,
+    get label() {
+      const n = outbox.size, ch = `${n} change${n === 1 ? "" : "s"}`;
+      return offline ? `Offline. ${n ? ch + " saved on this device" : "Your plan is saved on this device"}; ${n === 1 ? "it'll" : n ? "they'll" : "changes will"} sync when you're back online.`
+        : n ? `Saving ${ch}…` : `Synced to your Dayline account (${session.user.email}). Same plan on every device you sign in on.`;
+    },
+    get synced() { return !offline; },
+    get offline() { return offline; },
+    get waiting() { return outbox.size; },
     home: "your Dayline account", account: session.user.email,
     async changePassword(pw) { const { error } = await sb.auth.updateUser({ password: pw }); if (error) throw error; },
-    async signOut() { await sb.auth.signOut(); try { localStorage.removeItem(CK); } catch (e) {} location.reload(); },
+    async signOut() {
+      if (outbox.size && !confirm(`${outbox.size} change${outbox.size === 1 ? " hasn't" : "s haven't"} synced yet. Sign out anyway and lose ${outbox.size === 1 ? "it" : "them"}?`)) return;
+      await sb.auth.signOut(); try { localStorage.removeItem(CK); localStorage.removeItem(OK); } catch (e) {} location.reload();
+    },
     start(onItems, onDays, onSettings, onLost, onReviews) {
       cb = { onItems, onDays, onSettings, onLost, onReviews };
-      /* Show the last copy straight away, then fetch the latest. */
-      try { const c = JSON.parse(localStorage.getItem(CK) || "null"); if (c) { for (const k of Object.keys(maps)) maps[k] = new Map(c[k] || []); emit(ALL); } } catch (e) {}
-      fetchAll().catch(() => { if (!maps.task.size) onItems([]); onLost(); });
+      /* Show this device's copy straight away (plus any unsynced changes), then fetch the latest. */
+      try { const c = JSON.parse(localStorage.getItem(CK) || "null"); if (c) for (const k of Object.keys(maps)) maps[k] = new Map(c[k] || []); } catch (e) {}
+      for (const o of outbox.values()) apply(o.kind, o.id, o.data);
+      if ([...Object.values(maps)].some(m => m.size)) emit(ALL);
+      fetchAll().then(flush).catch(e => { if (!maps.task.size) onItems([]); if (!maps.settings.has("me")) onSettings({}); if (netErr(e)) setOffline(true); else onLost(); });
       sb.channel("dayline-" + uid)
         .on("postgres_changes", { event: "*", schema: "public", table: T, filter: `user_id=eq.${uid}` }, p => {
           const row = p.eventType === "DELETE" ? p.old : p.new;
-          if (!row || !row.kind || (row.user_id && row.user_id !== uid) || pending.get(row.kind + ":" + row.id)) return;
+          if (!row || !row.kind || (row.user_id && row.user_id !== uid) || outbox.has(row.kind + ":" + row.id)) return;
           apply(row.kind, row.id, p.eventType === "DELETE" ? null : row.data); emit(new Set([row.kind]));
         })
-        .subscribe(status => { if (status === "SUBSCRIBED") fetchAll().catch(() => {}); });
-      /* Coming back to the tab (phone unlocked, laptop woken): catch up on anything missed. */
-      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fetchAll().catch(() => {}); });
+        .subscribe(status => { if (status === "SUBSCRIBED") fetchAll().then(flush).catch(() => {}); });
+      /* Coming back to the app (phone unlocked, laptop woken): send queued changes and catch up. */
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { flush(); fetchAll().catch(e => { if (netErr(e)) setOffline(true); }); } });
     },
     putItem: t => { const o = { ...t }; delete o.id; return write("task", t.id, o); },
     deleteItem: id => write("task", id, null),
@@ -1494,7 +1539,6 @@ function loginScreen(sb) {
   };
   return store;
 }
-
 const Platform = {
   async connect() {
     if (supaConfig()) return { store: await SupabaseAdapter(), ai: null, mail: null, files: null };
@@ -2038,6 +2082,12 @@ function renderSync() {
   if (!STORE) { el.className = "sync"; el.lastElementChild.textContent = "Loading…"; return; }
   el.className = STORE.synced ? "sync on" : "sync";
   el.lastElementChild.textContent = S.syncLost ? "Sync stopped. Reload to reconnect." : STORE.label;
+  /* A small badge so you always know when you are offline. */
+  let pill = $("#offPill");
+  if (STORE.offline) {
+    if (!pill) { pill = document.createElement("div"); pill.id = "offPill"; pill.className = "offpill"; pill.setAttribute("role", "status"); document.body.appendChild(pill); }
+    pill.textContent = `📴 Offline${STORE.waiting ? ` · ${STORE.waiting} to sync` : ""}`;
+  } else if (pill) pill.remove();
 }
 
 function nextExam() {
@@ -4114,6 +4164,46 @@ function endTour(finished) {
   else toast("No problem. You can see the tour any time in ⋯ More → ❔ How Dayline works.");
 }
 
+/* ---------- Website only: offline copy, update notice, install on home screen ---------- */
+const IS_SITE = !!supaConfig();
+const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+let installEvt = null, swReg = null, swRefreshing = false;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; syncInstallBtn(); });
+window.addEventListener("appinstalled", () => { installEvt = null; syncInstallBtn(); toast("Dayline is installed. Open it from your home screen or app list."); });
+function syncInstallBtn() { const b = $("#installBtn"); if (b) b.hidden = !IS_SITE || isStandalone(); }
+function offerUpdate(w) {
+  if (!w) return;
+  toast("A new version of Dayline is ready.", "Update now", () => { swRefreshing = true; w.postMessage("skipWaiting"); });
+}
+if (IS_SITE && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then(reg => {
+    swReg = reg;
+    if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing;
+      if (w) w.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) offerUpdate(w); });
+    });
+    /* Check for a new version whenever Dayline comes back to the front. */
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().then(() => { if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting); }).catch(() => {}); });
+  }).catch(() => {});
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (swRefreshing) location.reload(); });
+}
+function openInstall() {
+  if (installEvt) { const e = installEvt; e.prompt(); e.userChoice.finally(() => { installEvt = null; syncInstallBtn(); }); return; }
+  const steps = isIOS()
+    ? `<li>Open this page in <b>Safari</b> (not Chrome or the Gmail app).</li>
+       <li>Tap the <b>Share</b> button: the square with an arrow pointing up. On iPhone it's at the bottom of the screen; on iPad, top right.</li>
+       <li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+       <li>Open <b>Dayline</b> from your home screen and sign in once more. (iPhone keeps home-screen apps separate from Safari.)</li>`
+    : `<li>In <b>Chrome</b> or <b>Edge</b>, open the <b>⋮</b> menu, or look for the install icon at the right of the address bar.</li>
+       <li>Tap <b>Install app</b> (or <b>Add to Home screen</b>).</li>
+       <li>Open <b>Dayline</b> from your home screen or app list.</li>`;
+  openSheet(`<h2>Put Dayline on your home screen</h2>
+  <p class="hint" style="margin:-6px 0 12px">It opens full-screen like an app, starts instantly, and works without internet. Changes sync when you're back online.</p>
+  <ol class="inst">${steps}</ol>
+  <div class="btns" style="margin-top:14px"><span class="sp"></span><button type="button" class="btn primary" data-close>Got it</button></div>`);
+}
 /* Welcome back: after 2+ days away, a fresh start instead of a backlog. */
 function welcomeCheck(tries = 0) {
   /* Wait for saved settings (and tasks) to arrive, so writing lastSeen never overwrites them with defaults. */
@@ -4873,6 +4963,8 @@ $("#reviewBtn").addEventListener("click", openReview);
 $("#progressBtn").addEventListener("click", () => openProgress());
 $("#whatNowBtn").addEventListener("click", openWhatNow);
 $("#helpBtn").addEventListener("click", () => startTour());
+$("#installBtn").addEventListener("click", openInstall);
+syncInstallBtn();
 $("#sortBtn").addEventListener("click", openCleanup);
 $("#tplMenuBtn").addEventListener("click", () => openTemplates(S.filter));
 /* "More" menu: opens below its button, closes on outside click, Escape, or after picking something. */
@@ -4910,7 +5002,7 @@ function syncBottomBar() {
   document.querySelectorAll("#bbar [data-bb]").forEach(b => { if (b.dataset.bb === "today" || b.dataset.bb === "tasks") { if (b.dataset.bb === p) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); } });
 }
 function openMoreSheet() {
-  const items = [["planBtn", "📋 Plan my day", true], ["addEventBtn", "📌 Add a fixed event"], ["ttMenuBtn", "📅 Weekly timetable"], ["projMenuBtn", "🎨 Projects"], ["sortBtn", "🧺 Sort the waiting pile"], ["reviewBtn", "🗓️ Weekly review"], ["progressBtn", "📈 Progress"], ["tplMenuBtn", "🧩 Step templates"], ["themeBtn", `🎨 Theme: ${THEME_NAME[THEME]}`], ["helpBtn", "❔ How Dayline works"], ["settingsBtn", "⚙ Settings"]].filter(x => !(x[2] && S.settings.simple));
+  const items = [["planBtn", "📋 Plan my day", true], ["addEventBtn", "📌 Add a fixed event"], ["ttMenuBtn", "📅 Weekly timetable"], ["projMenuBtn", "🎨 Projects"], ["sortBtn", "🧺 Sort the waiting pile"], ["reviewBtn", "🗓️ Weekly review"], ["progressBtn", "📈 Progress"], ["tplMenuBtn", "🧩 Step templates"], ["themeBtn", `🎨 Theme: ${THEME_NAME[THEME]}`], ["installBtn", "📲 Install Dayline"], ["helpBtn", "❔ How Dayline works"], ["settingsBtn", "⚙ Settings"]].filter(x => !(x[2] && S.settings.simple)).filter(x => x[0] !== "installBtn" || (IS_SITE && !isStandalone()));
   openSheet(`<h2>More</h2><div class="menu menu-sheet">${items.map(([id, l]) => `<button type="button" data-moreof="${id}">${esc(l)}</button>`).join("")}</div>
   <div class="btns" style="margin-top:10px"><span class="sp"></span><button class="btn ghost" data-close>Close</button></div>`, c => {
     c.querySelectorAll("[data-moreof]").forEach(b => b.addEventListener("click", () => {
