@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="theme-color" content="#1D6A4D"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script><script src="config.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset="utf-8"><meta name="theme-color" content="#1D6A4D"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script><script src="config.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Dayline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1225,41 +1225,60 @@ function loginScreen(sb) {
     el.className = "login";
     el.innerHTML = `<div class="login-card">
       <div class="brand"><i aria-hidden="true"></i>Dayline</div>
-      <h1>Sign in</h1>
-      <p class="hint">Use the same email on your phone, tablet and computer to see the same plan. No password: we email you a sign-in code.</p>
-      <form id="lg-f" class="login-f"><label class="f">Email<input id="lg-e" type="email" autocomplete="email" required placeholder="you@example.com"></label>
-        <button class="btn primary" id="lg-send">Email me a code</button></form>
-      <form id="lg-c" class="login-f" hidden><p class="hint" id="lg-sent"></p>
-        <label class="f">6-digit code<input id="lg-t" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="10" required></label>
-        <button class="btn primary">Sign in</button><button type="button" class="link" id="lg-back">Use a different email</button></form>
+      <h1 id="lg-h">Sign in</h1>
+      <p class="hint" id="lg-p">Use the same email and password on your phone, tablet and computer to see the same plan.</p>
+      <form id="lg-f" class="login-f">
+        <label class="f">Email<input id="lg-e" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+        <label class="f">Password<input id="lg-w" type="password" autocomplete="current-password" required minlength="8" placeholder="At least 8 characters"></label>
+        <button class="btn primary" id="lg-go">Sign in</button>
+      </form>
+      <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <button type="button" class="link" id="lg-mode">New here? Create an account</button>
+        <button type="button" class="link" id="lg-link">Forgot password? Email me a sign-in link</button>
+      </div>
       <p class="status" id="lg-st" role="status"></p>
     </div>`;
     document.body.appendChild(el);
     document.querySelector(".app").hidden = true;
-    const $l = s => el.querySelector(s), st = $l("#lg-st");
-    let email = "";
+    const $l = s => el.querySelector(s), st = $l("#lg-st"), back = location.origin + location.pathname;
+    let create = false;
+    const setMode = c => {
+      create = c;
+      $l("#lg-h").textContent = c ? "Create your account" : "Sign in";
+      $l("#lg-go").textContent = c ? "Create account" : "Sign in";
+      $l("#lg-w").autocomplete = c ? "new-password" : "current-password";
+      $l("#lg-mode").textContent = c ? "Already have an account? Sign in" : "New here? Create an account";
+      st.textContent = "";
+    };
+    $l("#lg-mode").addEventListener("click", () => setMode(!create));
     $l("#lg-f").addEventListener("submit", async e => {
       e.preventDefault();
-      email = $l("#lg-e").value.trim(); if (!email) return;
-      $l("#lg-send").disabled = true; st.textContent = "Sending…";
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
-      $l("#lg-send").disabled = false;
-      if (error) { st.textContent = /rate/i.test(error.message) ? "Too many emails just now. Wait a few minutes and try again." : `Couldn't send the email: ${error.message}`; return; }
-      st.textContent = ""; $l("#lg-f").hidden = true; $l("#lg-c").hidden = false;
-      $l("#lg-sent").textContent = `Check ${email}. Type the code from the email here, or tap the link in it on this device.`;
-      $l("#lg-t").focus();
+      const email = $l("#lg-e").value.trim(), password = $l("#lg-w").value;
+      $l("#lg-go").disabled = true; st.textContent = create ? "Creating your account…" : "Signing in…";
+      const r = create ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: back } }) : await sb.auth.signInWithPassword({ email, password });
+      $l("#lg-go").disabled = false;
+      if (r.error) {
+        const m = r.error.message || "";
+        st.textContent = /confirm/i.test(m) ? "Confirm your email first: tap the link in the email we sent, then sign in here."
+          : /invalid login/i.test(m) ? "Email or password doesn't match. New here? Tap Create an account."
+          : /already registered|already exists/i.test(m) ? "There's already an account with that email. Sign in instead."
+          : /rate/i.test(m) ? "Too many tries just now. Wait a few minutes and try again." : m;
+        return;
+      }
+      if (r.data && r.data.session) { location.reload(); return; }
+      setMode(false);
+      st.textContent = `Almost there. We emailed ${email}. Tap the link in it to confirm, then sign in here with your password.`;
     });
-    $l("#lg-c").addEventListener("submit", async e => {
-      e.preventDefault();
-      st.textContent = "Checking…";
-      const { error } = await sb.auth.verifyOtp({ email, token: $l("#lg-t").value.trim(), type: "email" });
-      if (error) { st.textContent = "That code didn't work. Check it, or send a new one."; return; }
-      location.reload();
+    $l("#lg-link").addEventListener("click", async () => {
+      const email = $l("#lg-e").value.trim();
+      if (!email) { st.textContent = "Type your email above first."; $l("#lg-e").focus(); return; }
+      st.textContent = "Sending…";
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: back, shouldCreateUser: false } });
+      st.textContent = error ? (/rate/i.test(error.message) ? "Too many emails just now. Wait a few minutes and try again." : error.message)
+        : `Check ${email} and tap the sign-in link. Then set a new password in ⚙ Settings → Account.`;
     });
-    $l("#lg-back").addEventListener("click", () => { $l("#lg-c").hidden = true; $l("#lg-f").hidden = false; st.textContent = ""; });
   });
-}
-async function SupabaseAdapter() {
+}async function SupabaseAdapter() {
   const cfg = supaConfig(); if (!cfg) return null;
   if (!window.supabase) await offlineScreen();
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
@@ -1306,6 +1325,7 @@ async function SupabaseAdapter() {
   const store = {
     label: `Synced to your Dayline account (${session.user.email}). Same plan on every device you sign in on.`, synced: true,
     home: "your Dayline account", account: session.user.email,
+    async changePassword(pw) { const { error } = await sb.auth.updateUser({ password: pw }); if (error) throw error; },
     async signOut() { await sb.auth.signOut(); try { localStorage.removeItem(CK); } catch (e) {} location.reload(); },
     start(onItems, onDays, onSettings, onLost, onReviews) {
       cb = { onItems, onDays, onSettings, onLost, onReviews };
@@ -2953,7 +2973,7 @@ function openSettings() {
       <div class="row"><button type="button" id="s-exp" class="btn">Export backup</button><label class="btn" style="text-align:center;color:var(--fg)">Import backup<input id="s-imp" type="file" accept=".json,application/json" hidden></label></div>
       <span class="hint" style="font-weight:400">Export saves all your tasks, events, highlights and settings to a file. You can import it here, or into the standalone Dayline website later.</span>
     </fieldset>
-    ${STORE && STORE.signOut ? `<fieldset class="f full"><legend>Account</legend><div class="row" style="align-items:center;justify-content:flex-start;flex-wrap:wrap"><span style="font-weight:400;color:var(--fg)">Signed in as <b>${esc(STORE.account)}</b></span><button type="button" class="btn" id="s-out">Sign out</button></div></fieldset>` : ""}
+    ${STORE && STORE.signOut ? `<fieldset class="f full"><legend>Account</legend><div class="row" style="align-items:center;justify-content:flex-start;flex-wrap:wrap"><span style="font-weight:400;color:var(--fg)">Signed in as <b>${esc(STORE.account)}</b></span><button type="button" class="btn" id="s-pw">Change password</button><button type="button" class="btn" id="s-out">Sign out</button></div></fieldset>` : ""}
     <div class="full">${privacyHtml()}</div>
     <div class="btns full"><span class="sp"></span><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save</button></div>
   </form>`, c => {
@@ -2966,6 +2986,7 @@ function openSettings() {
     c.querySelector("#s-exp").addEventListener("click", exportBackup);
     c.querySelector("#s-proj").addEventListener("click", openProjects);
     const so = c.querySelector("#s-out"); if (so) so.addEventListener("click", () => STORE.signOut());
+    const spw = c.querySelector("#s-pw"); if (spw) spw.addEventListener("click", openChangePassword);
     c.querySelector("#s-tt").addEventListener("click", openTimetable);
     c.querySelector("#s-setup").addEventListener("click", () => openSetup(0));
     c.querySelector("#s-imp").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if (f) importBackup(f); });
@@ -3760,6 +3781,23 @@ function openTimetable() {
   }, true);
 }
 
+function openChangePassword() {
+  openSheet(`<h2>Change password</h2>
+  <form id="pw-f" class="form" novalidate>
+    <label class="f full">New password<input id="pw-a" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters"></label>
+    <label class="f full">Type it again<input id="pw-b" type="password" autocomplete="new-password"></label>
+    <p class="status err full" id="pw-st" style="margin:0"></p>
+    <div class="btns full"><span class="sp"></span><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary">Save password</button></div>
+  </form>`, c => {
+    c.querySelector("#pw-f").addEventListener("submit", async e => {
+      e.preventDefault();
+      const a = c.querySelector("#pw-a").value, b = c.querySelector("#pw-b").value, st = c.querySelector("#pw-st");
+      if (a.length < 8) { st.textContent = "Use at least 8 characters."; return; }
+      if (a !== b) { st.textContent = "Those two don't match."; return; }
+      try { await STORE.changePassword(a); closeSheet(); toast("Password changed."); } catch (err) { st.textContent = err.message || "Couldn't change it. Try again."; }
+    });
+  });
+}
 function privacyHtml() {
   const synced = STORE && STORE.synced;
   return `<div class="privacy"><b>🔒 What's saved, and who can see it</b>
