@@ -137,6 +137,40 @@ function build(s, family) {
     text(nh, "Next", 11, C.muted, "semibold"); nh.addSpacer(); text(nh, L.next.sub, 11, C.muted);
     w.addSpacer(2);
     text(w, L.next.title, big ? 14 : 12, C.fg, "semibold", 1);
+  } else if (big) {
+    w.addSpacer(8);
+    text(w, "Nothing else planned today", 12, C.muted);
+  }
+  /* Large size: room for today's progress and the exam and deadline countdowns. */
+  if (family === "large") {
+    if (L.third) { w.addSpacer(10); text(w, L.third, 13, C.fg, "regular", 2); }
+    const td = s.today || {};
+    w.addSpacer(16);
+    const line = w.addStack(); line.size = new Size(0, 1); line.backgroundColor = new Color("#2A2A2D");
+    w.addSpacer(12);
+    text(w, "Today", 11, C.muted, "semibold");
+    w.addSpacer(4);
+    const tr = w.addStack(); tr.layoutHorizontally(); tr.centerAlignContent(); tr.spacing = 6;
+    text(tr, `${td.done || 0} of ${td.planned || 0}`, 22, C.fg, "bold");
+    text(tr, "done", 12, C.muted);
+    tr.addSpacer();
+    if (+td.focusMin > 0) { text(tr, dur(+td.focusMin), 22, C.fg, "bold"); text(tr, "focused", 12, C.muted); }
+    const ups = (s.upcoming || []).slice(0, 3);
+    if (ups.length) {
+      w.addSpacer(16);
+      text(w, "Coming up", 11, C.muted, "semibold");
+      for (const u of ups) {
+        w.addSpacer(6);
+        const r = w.addStack(); r.layoutHorizontally(); r.centerAlignContent(); r.spacing = 8;
+        const sw = r.addStack(); sw.size = new Size(8, 8); sw.cornerRadius = 4; sw.backgroundColor = new Color(u.color || "#A1A1A6");
+        text(r, u.name, 13, C.fg, "regular", 1);
+        r.addSpacer();
+        text(r, u.days === 0 ? "today" : u.days === 1 ? "tomorrow" : `${u.days} days`, 13, C.muted);
+      }
+    }
+    w.addSpacer();
+    if (stale) text(w, stale, 10, C.muted);
+    return w;
   }
   w.addSpacer();
   if (L.third) text(w, L.third, 11, C.muted, "regular", family === "small" ? 2 : 1);
