@@ -1,21 +1,21 @@
-// Dayline widget for Scriptable (iPhone / iPad).
-// Shows what's on now or next, your highlight, today's progress and your next exam.
-// First run: open this script in Scriptable and tap ▶. It asks for a pairing code from
-// Dayline → ⚙ Settings → Desk buddy → Pair a desk buddy. Then add a Scriptable widget to your home or lock screen.
-// No passwords are stored here: just a device token in the iOS Keychain. Unpair any time in Dayline Settings.
+// Lumo widget for Scriptable (iPhone / iPad). (The script keeps its old file name, dayline-widget.js.)
+// Shows what is on now, what is next, and how many quick reviews are ready, in Lumo's black, grey and amber.
+// First run: open this script in Scriptable and tap the play button. It asks for a pairing code from
+// Lumo: Settings > Devices > Pair a desk buddy. Then add a Scriptable widget to your home or lock screen.
+// No passwords are stored here: just a device token in the iOS Keychain. Unpair any time in Lumo Settings.
+// If the internet is off, the widget draws its last saved copy and says how old it is.
 
 const API = "https://xohfloyqwjymisomlbgl.supabase.co/functions/v1/dayline-push";
 const APP = "https://abdullahmzubair.github.io/dayline/";
 const KEY = "dayline-widget-token";
 const CACHE = "dayline-widget-state";
+const STALE_MIN = 30; /* show "updated N min ago" when the data is older than this */
 
 const C = {
-  bg: Color.dynamic(new Color("#F4F1E8"), new Color("#161D19")),
-  card: Color.dynamic(new Color("#FFFFFF"), new Color("#1D2621")),
-  fg: Color.dynamic(new Color("#1A2620"), new Color("#E3EAE5")),
-  muted: Color.dynamic(new Color("#5E6B64"), new Color("#93A299")),
-  accent: Color.dynamic(new Color("#1D6A4D"), new Color("#5DC497")),
-  now: Color.dynamic(new Color("#D4511C"), new Color("#FF7C46"))
+  bg: new Color("#0B0B0C"),
+  fg: new Color("#F4F4F2"),
+  muted: new Color("#A1A1A6"),
+  amber: new Color("#F5B94A")
 };
 
 async function call(action, body, token) {
@@ -32,8 +32,8 @@ async function call(action, body, token) {
 
 async function pair() {
   const a = new Alert();
-  a.title = "Pair with Dayline";
-  a.message = "In Dayline: ⚙ Settings → Desk buddy → Pair a desk buddy. Type the 8-character code here.";
+  a.title = "Pair with Lumo";
+  a.message = "In Lumo: Settings > Devices > Pair a desk buddy. Type the 8-character code here.";
   a.addTextField("e.g. 9JDH-VVC6", "");
   a.addAction("Pair");
   a.addCancelAction("Cancel");
@@ -43,94 +43,104 @@ async function pair() {
   const { status, json } = await call("pair", { code, name });
   if (status === 200 && json && json.token) {
     Keychain.set(KEY, json.token);
-    const ok = new Alert(); ok.title = "Paired ✅"; ok.message = "Now add a Scriptable widget to your home or lock screen and choose the Dayline script."; ok.addAction("OK"); await ok.presentAlert();
+    const ok = new Alert(); ok.title = "Paired"; ok.message = "Now add a Scriptable widget to your home or lock screen and choose this script."; ok.addAction("OK"); await ok.presentAlert();
     return true;
   }
   const bad = new Alert(); bad.title = "Couldn't pair"; bad.message = (json && json.error) || "Check your internet and try again."; bad.addAction("OK"); await bad.presentAlert();
   return false;
 }
 
+/* The fresh state, or the last saved copy (marked with when it was fetched) if the network fails. */
 async function getState() {
   const token = Keychain.contains(KEY) ? Keychain.get(KEY) : null;
-  if (!token) return { error: "Open the Dayline script in Scriptable to pair it." };
+  if (!token) return { error: "Open the Lumo script in Scriptable to pair it." };
   const { status, json } = await call("state", {}, token);
-  if (status === 200 && json) { Keychain.set(CACHE, JSON.stringify({ at: Date.now(), json })); return json; }
-  if (status === 401) { Keychain.remove(KEY); return { error: "Unpaired. Open the Dayline script in Scriptable to pair again." }; }
-  if (Keychain.contains(CACHE)) { const c = JSON.parse(Keychain.get(CACHE)); return { ...c.json, stale: true }; }
-  return { error: "Can't reach Dayline right now." };
+  if (status === 200 && json) { try { Keychain.set(CACHE, JSON.stringify({ at: Date.now(), json })); } catch (e) {} return { ...json, fetchedAt: Date.now() }; }
+  if (status === 401) { Keychain.remove(KEY); return { error: "Unpaired. Open the Lumo script in Scriptable to pair again." }; }
+  if (Keychain.contains(CACHE)) { try { const c = JSON.parse(Keychain.get(CACHE)); return { ...c.json, fetchedAt: c.at, offline: true }; } catch (e) {} }
+  return { error: "Can't reach Lumo right now." };
 }
 
 const t12 = hhmm => { if (!hhmm) return ""; const [h, m] = hhmm.split(":").map(Number); return `${h % 12 || 12}${m ? ":" + String(m).padStart(2, "0") : ""} ${h < 12 ? "am" : "pm"}`; };
-const dur = m => m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? " " + (m % 60) + "m" : ""}` : `${m}m`;
+const toMin = hhmm => { const [h, m] = String(hhmm || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+const dur = m => m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? " " + (m % 60) + "m" : ""}` : `${Math.round(m)}m`;
 function text(stack, s, size, color, weight = "regular", lines = 1) {
   const t = stack.addText(String(s));
   t.font = weight === "bold" ? Font.boldSystemFont(size) : weight === "semibold" ? Font.semiboldSystemFont(size) : Font.systemFont(size);
   t.textColor = color; t.lineLimit = lines; t.minimumScaleFactor = 0.7;
   return t;
 }
-/* What to headline: running task, else what's on now, else the next thing, else the suggestion. */
-function headline(s) {
-  if (s.running) return { k: "FOCUSING", title: s.running.title, sub: `${Math.round(s.running.elapsedMin)}m in${s.running.project ? " · " + s.running.project : ""}`, color: s.running.color };
-  if (s.current) return { k: "NOW", title: s.current.title, sub: `until ${t12(s.current.end)}${s.current.project ? " · " + s.current.project : ""}`, color: s.current.color };
-  if (s.next) return { k: `NEXT · ${t12(s.next.start)}`, title: s.next.title, sub: s.next.project || dur(s.next.minutes), color: s.next.color };
-  if (s.suggest) return { k: "UP NEXT", title: s.suggest.title, sub: `${dur(s.suggest.minutes)}${s.suggest.project ? " · " + s.suggest.project : ""}`, color: s.suggest.color };
-  return { k: "TODAY", title: "Nothing planned", sub: "Rest is allowed.", color: "#8C9790" };
+/* How old the data is, in minutes: from the server's generatedAt when there is one, else from when this phone last fetched it. */
+function ageMin(s, nowMs) {
+  const g = Date.parse(s.generatedAt), at = g > 0 ? g : s.fetchedAt;
+  return at ? Math.max(0, Math.floor((nowMs - at) / 60000)) : 0;
 }
-function block(w, h, titleSize, lines) {
-  const row = w.addStack(); row.layoutHorizontally(); row.spacing = 8;
-  const bar = row.addStack(); bar.size = new Size(4, 0); bar.backgroundColor = new Color(h.color || "#8C9790"); bar.cornerRadius = 2;
-  const col = row.addStack(); col.layoutVertically(); col.spacing = 2;
-  text(col, h.k, 10, C.muted, "semibold");
-  text(col, h.title, titleSize, C.fg, "bold", lines);
-  text(col, h.sub, 11, C.muted);
+const agoText = m => m >= 120 ? `${Math.floor(m / 60)} h` : `${m} min`;
+/* The small stale mark, or "" when the data is fresh. */
+function staleMark(s, nowMs) { const m = ageMin(s, nowMs); return m > STALE_MIN ? `updated ${agoText(m)} ago` : ""; }
+/* The clock the data was made for, moved forward by how long ago that was, so "min left" stays right on an old copy. */
+function clockMin(s, nowMs) { return toMin(s.time) + ageMin(s, nowMs); }
+function minutesLeft(s, nowMs) { return s.current ? Math.max(0, toMin(s.current.end) - clockMin(s, nowMs)) : null; }
+
+/* The three lines: Now, Next, and reviews or the first step. */
+function lines(s, nowMs) {
+  const run = s.running, cur = s.current, nx = s.next, sg = s.suggest;
+  let now;
+  if (run) now = { title: run.title, sub: `${Math.round(run.elapsedMin)}m in`, label: "Now" };
+  else if (cur) { const left = minutesLeft(s, nowMs); now = { title: cur.title, sub: left != null ? `${dur(left)} left` : `until ${t12(cur.end)}`, label: "Now" }; }
+  else if (sg) now = { title: sg.title, sub: dur(sg.minutes), label: "Up next" };
+  else now = { title: "Nothing planned", sub: "Rest is allowed.", label: "Now" };
+  const next = nx ? { title: nx.title, sub: t12(nx.start) } : null;
+  const rv = +s.reviewsDue || 0, step = s.firstStep || null;
+  let third = null;
+  if (rv > 0) third = `${rv} quick review${rv === 1 ? "" : "s"} ready`;
+  else if (step) third = `First step: ${step}`;
+  return { now, next, third };
 }
 function build(s, family) {
-  const w = new ListWidget();
+  const nowMs = Date.now(), w = new ListWidget();
   w.url = APP;
-  w.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);
+  w.refreshAfterDate = new Date(nowMs + 15 * 60 * 1000);
   if (s.error) {
-    if (family.startsWith("accessory")) { text(w, "Dayline: tap to pair", 12, Color.white()); return w; }
-    w.backgroundColor = C.bg; text(w, "Dayline", 13, C.accent, "bold"); w.addSpacer(6); text(w, s.error, 13, C.fg, "regular", 4); return w;
+    if (family.startsWith("accessory")) { text(w, "Lumo: tap to pair", 12, Color.white()); return w; }
+    w.backgroundColor = C.bg; text(w, "Lumo", 13, C.amber, "bold"); w.addSpacer(6); text(w, s.error, 13, C.fg, "regular", 4); return w;
   }
-  const h = headline(s), ex = (s.upcoming || [])[0];
+  const L = lines(s, nowMs), ex = (s.upcoming || [])[0], stale = staleMark(s, nowMs);
   /* Lock screen */
-  if (family === "accessoryInline") { text(w, `${h.k === "NOW" ? "Now" : "Next"}: ${h.title}`, 12, Color.white()); return w; }
+  if (family === "accessoryInline") { text(w, `${L.now.label}: ${L.now.title}`, 12, Color.white()); return w; }
   if (family === "accessoryCircular") {
     const st = w.addStack(); st.layoutVertically(); st.centerAlignContent();
-    if (ex) { text(st, String(ex.days), 20, Color.white(), "bold"); text(st, "days", 9, Color.white()); }
+    if (+s.reviewsDue > 0) { text(st, String(s.reviewsDue), 20, Color.white(), "bold"); text(st, "reviews", 9, Color.white()); }
+    else if (ex) { text(st, String(ex.days), 20, Color.white(), "bold"); text(st, "days", 9, Color.white()); }
     else { text(st, `${s.today.done}/${s.today.planned}`, 16, Color.white(), "bold"); text(st, "done", 9, Color.white()); }
     return w;
   }
   if (family === "accessoryRectangular") {
-    text(w, h.k, 10, Color.white(), "semibold"); text(w, h.title, 14, Color.white(), "bold", 2);
-    text(w, ex ? `${ex.days}d to ${ex.name}` : h.sub, 11, Color.white());
+    text(w, L.now.label, 10, Color.white(), "semibold"); text(w, L.now.title, 14, Color.white(), "bold", 2);
+    text(w, L.third || L.now.sub, 11, Color.white());
     return w;
   }
-  /* Home screen */
+  /* Home screen: black, off-white, grey, and one amber dot beside "Now". */
   w.backgroundColor = C.bg;
   w.setPadding(14, 14, 12, 14);
-  const top = w.addStack(); top.layoutHorizontally(); top.centerAlignContent();
-  text(top, "Dayline", 12, C.accent, "bold"); top.addSpacer();
-  text(top, s.stale ? "offline" : `${s.weekday} ${t12(s.time)}`, 10, C.muted);
-  w.addSpacer(8);
-  if (family === "small") {
-    block(w, h, 15, 3);
-    w.addSpacer();
-    text(w, ex ? `${ex.days}d · ${ex.name}` : `✓ ${s.today.done} done · ${dur(s.today.focusMin)}`, 10, C.muted);
-    return w;
+  const big = family !== "small", tSize = big ? 16 : 14;
+  const head = w.addStack(); head.layoutHorizontally(); head.centerAlignContent(); head.spacing = 6;
+  const dot = head.addStack(); dot.size = new Size(8, 8); dot.backgroundColor = C.amber; dot.cornerRadius = 4;
+  text(head, L.now.label, 11, C.muted, "semibold");
+  head.addSpacer();
+  text(head, L.now.sub, 11, C.muted);
+  w.addSpacer(4);
+  text(w, L.now.title, tSize, C.fg, "bold", big ? 2 : 3);
+  if (L.next) {
+    w.addSpacer(8);
+    const nh = w.addStack(); nh.layoutHorizontally(); nh.centerAlignContent();
+    text(nh, "Next", 11, C.muted, "semibold"); nh.addSpacer(); text(nh, L.next.sub, 11, C.muted);
+    w.addSpacer(2);
+    text(w, L.next.title, big ? 14 : 12, C.fg, "semibold", 1);
   }
-  const body = w.addStack(); body.layoutHorizontally(); body.spacing = 12;
-  const left = body.addStack(); left.layoutVertically(); left.size = new Size(family === "large" ? 0 : 170, 0);
-  block(left, h, 16, family === "large" ? 3 : 2);
-  if (s.next && h.k !== `NEXT · ${t12(s.next.start)}` && family !== "small") {
-    left.addSpacer(8);
-    block(left, { k: `THEN · ${t12(s.next.start)}`, title: s.next.title, sub: s.next.project || dur(s.next.minutes), color: s.next.color }, 13, 1);
-  }
-  const right = body.addStack(); right.layoutVertically(); right.spacing = 4;
-  if (s.highlight) { text(right, "⭐ HIGHLIGHT", 10, C.muted, "semibold"); text(right, s.highlight.done ? `✓ ${s.highlight.title}` : s.highlight.title, 12, C.fg, "semibold", 2); }
-  right.addSpacer(4);
-  text(right, `✓ ${s.today.done} done · ${dur(s.today.focusMin)} focus`, 11, C.muted);
-  for (const u of (s.upcoming || []).slice(0, family === "large" ? 3 : 1)) text(right, `⏳ ${u.days}d · ${u.name}`, 11, C.fg);
+  w.addSpacer();
+  if (L.third) text(w, L.third, 11, C.muted, "regular", family === "small" ? 2 : 1);
+  if (stale) text(w, stale, 10, C.muted);
   return w;
 }
 
@@ -140,8 +150,8 @@ const state = await getState();
 const widget = build(state, family);
 if (config.runsInWidget) Script.setWidget(widget);
 else {
-  const a = new Alert(); a.title = "Dayline widget";
-  a.message = Keychain.contains(KEY) ? "Paired with Dayline. Preview a size, or unpair." : "Not paired yet.";
+  const a = new Alert(); a.title = "Lumo widget";
+  a.message = Keychain.contains(KEY) ? "Paired with Lumo. Preview a size, or unpair." : "Not paired yet.";
   a.addAction("Preview small"); a.addAction("Preview medium"); a.addAction("Preview large");
   if (Keychain.contains(KEY)) a.addDestructiveAction("Unpair this device");
   a.addCancelAction("Done");

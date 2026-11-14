@@ -2,7 +2,7 @@
    - The app itself (page, settings, library, icons) is kept on the device, so Dayline opens instantly and offline.
    - Your data never goes through here: Supabase requests always go straight to the network.
    - A new upload gets a new version, and the page offers "New version, tap to refresh". */
-const VERSION = "20261114-f59b8486";
+const VERSION = "20261114-19f1c35e";
 const APP = "dayline-app-" + VERSION, FONTS = "dayline-fonts";
 const PRECACHE = ["./","./index.html","./config.js","./manifest.webmanifest","./icons/apple-touch-icon.png","./icons/badge-96.png","./icons/favicon-32.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png","https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"];
 
@@ -18,15 +18,19 @@ self.addEventListener("message", e => { if (e.data === "skipWaiting") self.skipW
 self.addEventListener("push", e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (x) { d = { body: e.data ? e.data.text() : "" }; }
-  e.waitUntil(self.registration.showNotification(d.title || "Dayline", {
+  /* A daily nudge (tag "nudge:...") is counted privately on this device, so the app can say "nudges shown" in "What's working". Nothing is sent anywhere. */
+  const count = /^nudge:/.test(d.tag || "") ? caches.open("lumo-nudges").then(c => c.put("./n/" + encodeURIComponent(d.tag), new Response("1"))).catch(() => {}) : Promise.resolve();
+  e.waitUntil(Promise.all([count, self.registration.showNotification(d.title || "Lumo", {
     body: d.body || "", tag: d.tag || undefined, icon: "icons/icon-192.png", badge: "icons/badge-96.png", data: { url: d.url || "./" }
-  }));
+  })]));
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
-  const target = new URL((e.notification.data && e.notification.data.url) || "./", self.registration.scope).href;
+  const url = (e.notification.data && e.notification.data.url) || "./", target = new URL(url, self.registration.scope).href;
+  const fromNudge = /[?&]from=nudge\b/.test(url);
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
-    for (const c of list) if (c.url.startsWith(self.registration.scope) && "focus" in c) return c.focus();
+    /* Already open: bring it to the front and tell it a nudge was tapped (the page can't see the address change). */
+    for (const c of list) if (c.url.startsWith(self.registration.scope) && "focus" in c) { if (fromNudge) c.postMessage({ lumo: "nudge-click" }); return c.focus(); }
     return self.clients.openWindow(target);
   }));
 });
